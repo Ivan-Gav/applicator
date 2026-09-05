@@ -3,6 +3,8 @@ import nextVitals from "eslint-config-next/core-web-vitals";
 import prettier from "eslint-config-prettier/flat";
 import jsxA11y from "eslint-plugin-jsx-a11y";
 import tseslint from "typescript-eslint";
+import testingLibrary from "eslint-plugin-testing-library";
+import vitest from "@vitest/eslint-plugin";
 
 const supabaseOnlyInAdapters = {
   group: ["@supabase/*", "@supabase/**"],
@@ -61,6 +63,15 @@ export default defineConfig([
         { patterns: [supabaseOnlyInAdapters, domainMustNotDependOnAdapters] },
       ],
     },
+  },
+
+  {
+    ...vitest.configs.recommended,
+    files: ["**/*.test.{ts,tsx}"],
+  },
+  {
+    ...testingLibrary.configs["flat/react"],
+    files: ["src/ui/**/*.test.{ts,tsx}"],
   },
 
   prettier,
