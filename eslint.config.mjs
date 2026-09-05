@@ -5,6 +5,7 @@ import jsxA11y from "eslint-plugin-jsx-a11y";
 import tseslint from "typescript-eslint";
 import testingLibrary from "eslint-plugin-testing-library";
 import vitest from "@vitest/eslint-plugin";
+import playwright from "eslint-plugin-playwright";
 
 const supabaseOnlyInAdapters = {
   group: ["@supabase/*", "@supabase/**"],
@@ -72,6 +73,11 @@ export default defineConfig([
   {
     ...testingLibrary.configs["flat/react"],
     files: ["src/ui/**/*.test.{ts,tsx}"],
+  },
+
+  {
+    ...playwright.configs["flat/recommended"],
+    files: ["e2e/**"],
   },
 
   prettier,
