@@ -17,7 +17,7 @@ export default defineConfig({
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
-    command: isCI ? "npm run build && npm run start" : "npm run dev",
+    command: isCI ? "npm run start" : "npm run dev",
     url: baseURL,
     reuseExistingServer: !isCI,
     timeout: 120_000,
