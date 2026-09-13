@@ -1,0 +1,2 @@
+-- Intentionally empty: local data is created through the app or by tests.
+-- Supabase runs this file after migrations on every `npm run db:reset`.

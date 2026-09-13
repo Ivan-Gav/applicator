@@ -1,0 +1,2 @@
+# Biome and CI expect LF. Overrides core.autocrlf on Windows checkouts.
+* text=auto eol=lf

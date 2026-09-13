@@ -49,11 +49,29 @@ const illegalMoves: ReadonlyArray<[ApplicationStatus, ApplicationStatus]> = [
 function anApplication(overrides: Partial<Application> = {}): Application {
   return {
     id: "app-1",
-    company: "Acme",
-    position: "Engineer",
+    companyName: "Acme",
+    positionTitle: "Engineer",
+    seniority: null,
+    city: null,
+    country: null,
+    workMode: null,
+    channel: "direct",
+    source: null,
+    sourceUrl: null,
+    applicationUrl: null,
     status: "applied",
     appliedAt: new Date("2026-03-01T09:00:00Z"),
     lastContactAt: null,
+    salary: {
+      posted: { min: null, max: null },
+      asked: { min: null, max: null },
+      target: { min: null, max: null },
+      currency: "EUR",
+      period: null,
+    },
+    contact: { name: null, role: null, email: null, phone: null, url: null },
+    notes: null,
+    archivedAt: null,
     ...overrides,
   };
 }

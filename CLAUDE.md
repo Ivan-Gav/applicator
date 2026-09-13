@@ -83,6 +83,13 @@ A function belongs in `domain/` the moment it knows what an application is.
 Do not introduce a DI container, use-case classes, aggregates or domain events.
 The domain is small; keep the structure proportional to it.
 
+### Deliberately denormalised
+
+Company, source and contact are plain text columns on `application`, not
+tables. Recurrence is real but rare; autocomplete over distinct existing values
+(`ApplicationRepository.distinctValues`) covers it without lookup UI, duplicate
+merging or joins on every read. Do not reintroduce lookup tables for them.
+
 ## Naming conventions
 
 - Use `type` everywhere. Reserve `interface` for repository contracts only — the

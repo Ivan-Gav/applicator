@@ -1,0 +1,107 @@
+import { z } from "zod";
+import { applicationStatuses, channels, salaryPeriods, seniorities, workModes } from "./model";
+
+// Form fields arrive as "" when left blank; the domain stores absence as null.
+const blankToNull = (value: unknown) =>
+  typeof value === "string" && value.trim() === "" ? null : value;
+
+const optionalText = z.preprocess(blankToNull, z.string().trim().min(1).nullable());
+const optionalUrl = z.preprocess(blankToNull, z.url({ protocol: /^https?$/ }).nullable());
+const optionalEmail = z.preprocess(blankToNull, z.email().nullable());
+
+const amount = z.int32().nonnegative().nullable().default(null);
+
+export const salaryRangeSchema = z
+  .object({ min: amount, max: amount })
+  .refine((range) => range.min === null || range.max === null || range.min <= range.max, {
+    message: "min must not exceed max",
+    path: ["min"],
+  });
+
+export const salarySchema = z.object({
+  posted: salaryRangeSchema.default({ min: null, max: null }),
+  asked: salaryRangeSchema.default({ min: null, max: null }),
+  target: salaryRangeSchema.default({ min: null, max: null }),
+  currency: z.preprocess(
+    blankToNull,
+    z
+      .string()
+      .trim()
+      .regex(/^[A-Za-z]{3}$/, "must be an ISO 4217 code")
+      .toUpperCase()
+      .nullable()
+      .default("EUR"),
+  ),
+  period: z.enum(salaryPeriods).nullable().default(null),
+});
+
+export const contactSchema = z.object({
+  name: optionalText.default(null),
+  role: optionalText.default(null),
+  email: optionalEmail.default(null),
+  phone: optionalText.default(null),
+  url: optionalUrl.default(null),
+});
+
+export const applicationStatusSchema = z.enum(applicationStatuses);
+
+// Status, appliedAt and lastContactAt are deliberately absent: they change only
+// through the transition rules, never by direct edit.
+const editableFields = {
+  companyName: z.string().trim().min(1).max(200),
+  positionTitle: z.string().trim().min(1).max(200),
+  seniority: z.enum(seniorities).nullable(),
+  city: optionalText,
+  country: optionalText,
+  workMode: z.enum(workModes).nullable(),
+  channel: z.enum(channels),
+  source: optionalText,
+  sourceUrl: optionalUrl,
+  applicationUrl: optionalUrl,
+  salary: salarySchema,
+  contact: contactSchema,
+  notes: optionalText,
+};
+
+export const createApplicationSchema = z.object({
+  companyName: editableFields.companyName,
+  positionTitle: editableFields.positionTitle,
+  seniority: editableFields.seniority.default(null),
+  city: editableFields.city.default(null),
+  country: editableFields.country.default(null),
+  workMode: editableFields.workMode.default(null),
+  channel: editableFields.channel.default("direct"),
+  source: editableFields.source.default(null),
+  sourceUrl: editableFields.sourceUrl.default(null),
+  applicationUrl: editableFields.applicationUrl.default(null),
+  salary: editableFields.salary.default({
+    posted: { min: null, max: null },
+    asked: { min: null, max: null },
+    target: { min: null, max: null },
+    currency: "EUR",
+    period: null,
+  }),
+  contact: editableFields.contact.default({
+    name: null,
+    role: null,
+    email: null,
+    phone: null,
+    url: null,
+  }),
+  notes: editableFields.notes.default(null),
+});
+
+// Built from the default-free field set on purpose: a partial schema derived
+// from createApplicationSchema would fill absent keys with defaults and turn a
+// one-field edit into a reset of every other field.
+export const updateApplicationSchema = z
+  .object(editableFields)
+  .partial()
+  .refine((patch) => Object.values(patch).some((value) => value !== undefined), {
+    message: "at least one field must be provided",
+  });
+
+export type CreateApplicationInput = z.input<typeof createApplicationSchema>;
+export type CreateApplication = z.output<typeof createApplicationSchema>;
+export type UpdateApplicationInput = z.input<typeof updateApplicationSchema>;
+export type UpdateApplication = z.output<typeof updateApplicationSchema>;
