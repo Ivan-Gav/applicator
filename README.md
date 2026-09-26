@@ -35,3 +35,16 @@ Database scripts:
 | `npm run db:test`    | Run the pgTAP tests in `supabase/tests` (RLS isolation)             |
 
 `npm run build` produces a production build; `npm start` serves it.
+
+## Signing in locally
+
+Sign-in is passwordless: enter an email address on `/sign-in` and open the link
+from the mail. Locally nothing leaves the machine; the mail lands in Mailpit at
+http://127.0.0.1:54324. Links work once and expire after an hour
+(`otp_expiry` in `supabase/config.toml`). Open the link in the same browser
+that requested it, otherwise the PKCE verifier cookie is missing.
+
+The Playwright suite never reads a mailbox. Its setup project mints a link
+through the Supabase admin API with `SUPABASE_SERVICE_ROLE_KEY` (already in
+`.env.example` for the local stack) and stores the resulting session for the
+specs that only need to be signed in.

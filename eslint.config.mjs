@@ -21,6 +21,13 @@ const storageTypesOnlyInAdapters = {
     "Map rows to domain types inside src/adapters/supabase/ and export those instead.",
 };
 
+const serviceRoleOnlyInE2e = {
+  group: ["**/service-role.client", "**/service-role.client.ts"],
+  message:
+    "The service role key bypasses RLS and must never serve a user request. " +
+    "Only the Playwright setup under e2e/ may import service-role.client.",
+};
+
 const domainMustNotDependOnAdapters = {
   group: ["@/adapters/*", "@/adapters/**", "**/adapters/*", "**/adapters/**"],
   message:
@@ -62,6 +69,8 @@ export default defineConfig([
     ...tseslint.configs.disableTypeChecked,
   },
 
+  // `no-restricted-imports` is not merged across config objects: the last
+  // matching object wins. Each block therefore lists every pattern it needs.
   {
     name: "architecture/supabase-only-in-adapters",
     files: ["**/*.{js,jsx,mjs,cjs,ts,tsx,mts,cts}"],
@@ -69,7 +78,7 @@ export default defineConfig([
     rules: {
       "no-restricted-imports": [
         "error",
-        { patterns: [supabaseOnlyInAdapters, storageTypesOnlyInAdapters] },
+        { patterns: [supabaseOnlyInAdapters, storageTypesOnlyInAdapters, serviceRoleOnlyInE2e] },
       ],
     },
   },
@@ -79,7 +88,19 @@ export default defineConfig([
     rules: {
       "no-restricted-imports": [
         "error",
-        { patterns: [supabaseOnlyInAdapters, domainMustNotDependOnAdapters] },
+        {
+          patterns: [supabaseOnlyInAdapters, domainMustNotDependOnAdapters, serviceRoleOnlyInE2e],
+        },
+      ],
+    },
+  },
+  {
+    name: "architecture/e2e-may-use-service-role",
+    files: ["e2e/**"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        { patterns: [supabaseOnlyInAdapters, storageTypesOnlyInAdapters] },
       ],
     },
   },

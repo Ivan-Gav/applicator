@@ -18,9 +18,15 @@ export default defineConfig({
       {
         extends: true,
         test: {
-          name: "domain",
+          name: "node",
           environment: "node",
-          include: ["src/domain/**/*.test.ts", "src/lib/**/*.test.ts"],
+          include: [
+            "src/domain/**/*.test.ts",
+            "src/lib/**/*.test.ts",
+            "src/adapters/**/*.test.ts",
+            "src/app/**/*.test.ts",
+            "src/*.test.ts",
+          ],
         },
       },
       {

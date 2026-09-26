@@ -54,6 +54,8 @@ src/
       storage.ts
 
   app/                     Next.js routing, route handlers, server actions
+    auth/_utils/           non-route code of a segment: a private folder (`_`),
+                           which Next.js keeps out of routing
 
   ui/                      everything React
     kit/                   shadcn primitives (configure the shadcn alias to @/ui/kit)
@@ -83,12 +85,73 @@ A function belongs in `domain/` the moment it knows what an application is.
 Do not introduce a DI container, use-case classes, aggregates or domain events.
 The domain is small; keep the structure proportional to it.
 
+### Authentication
+
+Passwordless magic link (PKCE). There is no Supabase browser client: requesting
+a link is a server action, the callback is a route handler, sign-out is a server
+action. The only browser-to-Supabase hop is the user clicking the emailed link.
+
+1. **Pages are protected by placement inside the `(protected)` route group.**
+   Its layout calls `requireUser()` once; pages carry no check of their own. A
+   page that needs the user *reads* it with `currentUser()` (cached per request,
+   so layout and page share one call); the layout *decides* on access.
+2. **Every route handler and server action begins with `requireUser()`**, since
+   no layout runs for them: they are independent HTTP entry points. The only
+   exceptions are the sign-in entry points (`requestMagicLink` and
+   `/auth/callback`), which exist to create a session.
+3. **The proxy handles token refresh only** and is never an authorisation
+   check. It keeps no list of public or protected paths and never redirects: a
+   request without a session passes through, and the layout or `requireUser()`
+   redirects it. When Supabase refuses to renew a session, the proxy tags the
+   request (`signInReasonHeader`) so `requireUser()` can tell the user why.
+4. **RLS in the database is the last line of defence.** Every query runs with
+   the user's access token through the request-bound server client; policies in
+   the migrations isolate users even if a check is forgotten.
+
+`requireUser()` and `currentUser()` (`src/app/auth/_utils/`) call `getUser()`, which
+verifies the token with Supabase. Never use `getSession()` for identity on the
+server: it decodes the cookie without verifying the signature, and a cookie can
+be forged. (The proxy calls it so the SDK decides when to refresh, and checks
+the result for presence only; the comment there explains why.)
+
+An unreachable Supabase is not a signed-out user. `authenticate()` reports it
+as `Unavailable`, `requireUser()` throws `AuthUnavailableError`, and
+`app/error.tsx` recognises it by its digest. Session cookies are never cleared
+because of a network error.
+
+Deliberate exception to ports and adapters: auth is **not** behind a repository
+interface. It is genuinely coupled to the framework's request lifecycle (cookies,
+redirects), and a port would be ceremony without benefit. Do not "fix" this.
+`src/adapters/supabase/auth.ts` is the whole surface.
+
+The service role key is read only by `src/adapters/supabase/service-role.client.ts`,
+which only `e2e/` may import (ESLint `no-restricted-imports`). It bypasses RLS and
+must never serve a user request.
+
 ### Deliberately denormalised
 
 Company, source and contact are plain text columns on `application`, not
 tables. Recurrence is real but rare; autocomplete over distinct existing values
 (`ApplicationRepository.distinctValues`) covers it without lookup UI, duplicate
 merging or joins on every read. Do not reintroduce lookup tables for them.
+
+## No magic strings
+
+- **Routes and our query parameters** live in `src/app/routes.ts`. Build URLs
+  with its helpers (`signInPath(reason)`), never by hand.
+- **Values with meaning** (failure reasons, request statuses) are `as const`
+  objects in the domain, with a same-named type:
+  `SignInFailureReason.LinkExpired`, not `"link_expired"`.
+- **Supabase's own vocabulary** (callback parameters, error codes, cookie names)
+  lives in `src/adapters/supabase/auth.constants.ts`, and only adapters read it.
+- **Every user-facing string** lives in `src/ui/messages.ts`, grouped by screen.
+  The domain carries no display text. This file becomes the next-intl catalogue.
+- Tests read texts, routes and codes from the same places, so a wording change
+  touches exactly one file.
+
+Literals stay where they are standard vocabulary rather than ours: HTTP header
+names, arguments typed by an SDK union (`scope: "local"`), DOM ids, and the
+proxy matcher, which Next.js requires as a static literal.
 
 ## Naming conventions
 

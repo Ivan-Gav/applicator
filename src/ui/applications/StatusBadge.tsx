@@ -1,16 +1,7 @@
 import type { ApplicationStatus } from "@/domain/application/model";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/ui/kit/badge";
-
-const statusLabels: Record<ApplicationStatus, string> = {
-  draft: "Draft",
-  applied: "Applied",
-  screening: "Screening",
-  interview: "Interview",
-  offer: "Offer",
-  rejected: "Rejected",
-  withdrawn: "Withdrawn",
-};
+import { messages } from "@/ui/messages";
 
 const statusStyles: Record<ApplicationStatus, string> = {
   draft: "bg-muted text-muted-foreground",
@@ -28,7 +19,7 @@ export type StatusBadgeProps = {
 };
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {
-  const label = statusLabels[status];
+  const label = messages.applications.status[status];
 
   return (
     <Badge

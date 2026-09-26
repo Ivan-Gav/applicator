@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { messages } from "@/ui/messages";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,8 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Applicator",
-  description: "Job application tracker",
+  // Pages set only their own title; the app name is appended once, here.
+  title: { default: messages.app.name, template: `%s · ${messages.app.name}` },
+  description: messages.app.description,
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

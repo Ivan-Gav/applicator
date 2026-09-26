@@ -45,3 +45,9 @@ next-env.d.ts
 /playwright-report
 /test-results
 /blob-report
+
+# playwright auth state (written by e2e/auth.setup.ts)
+/e2e/.auth
+
+# personal task list, not part of the project
+/TODO.md

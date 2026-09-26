@@ -1,10 +1,40 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import { routes, signInPath } from "@/app/routes";
+import { SignInFailureReason } from "@/domain/user/model";
+import { messages } from "@/ui/messages";
+import { authStateFile } from "./support/auth";
 
-test("home page has no accessibility violations", async ({ page }) => {
-  await page.goto("/");
+const publicPages = [
+  { name: "home page", path: routes.home },
+  { name: "sign-in page", path: signInPath() },
+  {
+    name: "sign-in page with a failure message",
+    path: signInPath(SignInFailureReason.VerifierMissing),
+  },
+];
 
-  const results = await new AxeBuilder({ page }).analyze();
+for (const { name, path } of publicPages) {
+  test(`${name} has no accessibility violations`, async ({ page }) => {
+    await page.goto(path);
 
-  expect(results.violations).toEqual([]);
+    const results = await new AxeBuilder({ page }).analyze();
+
+    expect(results.violations).toEqual([]);
+  });
+}
+
+test.describe("with a stored session", () => {
+  test.use({ storageState: authStateFile });
+
+  test("applications page has no accessibility violations", async ({ page }) => {
+    await page.goto(routes.applications);
+    await expect(
+      page.getByRole("heading", { level: 1, name: messages.applications.title }),
+    ).toBeVisible();
+
+    const results = await new AxeBuilder({ page }).analyze();
+
+    expect(results.violations).toEqual([]);
+  });
 });
