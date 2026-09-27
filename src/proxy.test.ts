@@ -1,5 +1,5 @@
 import { setupServer } from "msw/node";
-import type { NextResponse } from "next/server";
+import { NextRequest, type NextResponse } from "next/server";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   fakeAnonKey,
@@ -8,7 +8,7 @@ import {
   requestWithSession,
   tokenRefresh,
 } from "@/adapters/supabase/proxy-session.fixtures";
-import { signInReasonHeader } from "@/app/routes";
+import { requestedPathHeader, routes, signInReasonHeader } from "@/app/routes";
 import { SignInFailureReason } from "@/domain/user/model";
 import { proxy } from "./proxy";
 
@@ -65,5 +65,21 @@ describe("proxy", () => {
     );
 
     expect(forwardedRequestHeader(response, signInReasonHeader)).toBeNull();
+  });
+
+  it("tells the routes which path was requested, query included", async () => {
+    const response = await proxy(
+      new NextRequest("http://localhost:3000/applications?status=offer&sort=date"),
+    );
+
+    expect(forwardedRequestHeader(response, requestedPathHeader)).toBe(
+      "/applications?status=offer&sort=date",
+    );
+  });
+
+  it("overwrites a requested path sent by the client", async () => {
+    const response = await proxy(requestWith({}, { [requestedPathHeader]: "//evil.com" }));
+
+    expect(forwardedRequestHeader(response, requestedPathHeader)).toBe(routes.applications);
   });
 });

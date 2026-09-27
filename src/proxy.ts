@@ -1,12 +1,14 @@
 import type { NextRequest } from "next/server";
 import { resolveSession } from "@/adapters/supabase/proxy-session";
-import { signInReasonHeader } from "@/app/routes";
+import { requestedPathHeader, signInReasonHeader } from "@/app/routes";
 import { SessionState, SignInFailureReason } from "@/domain/user/model";
 
 /**
  * Keeps the access token fresh. That is its only real job: server components
  * cannot write cookies, so a refresh they triggered would rotate the tokens
- * without the browser ever storing the new ones.
+ * without the browser ever storing the new ones. Besides that it only tags the
+ * request with facts the routes cannot learn otherwise: the requested path,
+ * and why a session ended.
  *
  * This is NOT an authorisation check, and it never redirects. Whether a path
  * is protected is decided where the path is defined: the (protected) layout,
@@ -16,6 +18,7 @@ import { SessionState, SignInFailureReason } from "@/domain/user/model";
 export async function proxy(request: NextRequest) {
   const session = await resolveSession(request);
 
+  request.headers.set(requestedPathHeader, `${request.nextUrl.pathname}${request.nextUrl.search}`);
   request.headers.delete(signInReasonHeader);
   if (session.state === SessionState.Expired) {
     // The dead session is already gone from the request, so requireUser() will

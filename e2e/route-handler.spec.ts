@@ -27,7 +27,7 @@ test("a protected route handler refuses a request with no session", async ({ req
   const response = await request.get(routes.apiMe, { maxRedirects: 0 });
 
   expect(response.status()).toBe(307);
-  expect(redirectTarget(response)).toBe(signInPath());
+  expect(redirectTarget(response)).toBe(signInPath({ redirectTo: routes.apiMe }));
 });
 
 test("a protected route handler refuses a forged session cookie", async ({ browser, baseURL }) => {
@@ -40,7 +40,7 @@ test("a protected route handler refuses a forged session cookie", async ({ brows
   const response = await context.request.get(routes.apiMe, { maxRedirects: 0 });
 
   expect(response.status()).toBe(307);
-  expect(redirectTarget(response)).toBe(signInPath());
+  expect(redirectTarget(response)).toBe(signInPath({ redirectTo: routes.apiMe }));
   await context.close();
 });
 
@@ -54,6 +54,8 @@ test("a protected route handler says why when the session expired", async ({
   const response = await context.request.get(routes.apiMe, { maxRedirects: 0 });
 
   expect(response.status()).toBe(307);
-  expect(redirectTarget(response)).toBe(signInPath(SignInFailureReason.SessionExpired));
+  expect(redirectTarget(response)).toBe(
+    signInPath({ reason: SignInFailureReason.SessionExpired, redirectTo: routes.apiMe }),
+  );
   await context.close();
 });

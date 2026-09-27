@@ -10,7 +10,7 @@ const publicPages = [
   { name: "sign-in page", path: signInPath() },
   {
     name: "sign-in page with a failure message",
-    path: signInPath(SignInFailureReason.VerifierMissing),
+    path: signInPath({ reason: SignInFailureReason.VerifierMissing }),
   },
 ];
 
@@ -26,6 +26,15 @@ for (const { name, path } of publicPages) {
 
 test.describe("with a stored session", () => {
   test.use({ storageState: authStateFile });
+
+  test("home page has no accessibility violations", async ({ page }) => {
+    await page.goto(routes.home);
+    await expect(page.getByRole("link", { name: messages.home.openApplications })).toBeVisible();
+
+    const results = await new AxeBuilder({ page }).analyze();
+
+    expect(results.violations).toEqual([]);
+  });
 
   test("applications page has no accessibility violations", async ({ page }) => {
     await page.goto(routes.applications);

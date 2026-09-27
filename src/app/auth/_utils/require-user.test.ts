@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { authenticate } from "@/adapters/supabase/auth";
-import { signInPath, signInReasonHeader } from "@/app/routes";
+import { requestedPathHeader, routes, signInPath, signInReasonHeader } from "@/app/routes";
 import {
   type Authentication,
   AuthenticationStatus,
@@ -44,8 +44,25 @@ describe("requireUser", () => {
     expect(redirect).not.toHaveBeenCalled();
   });
 
-  it("sends a signed-out visitor to sign-in without a reason", async () => {
+  it("sends a signed-out visitor to sign-in, carrying the requested path", async () => {
+    given(
+      { status: AuthenticationStatus.SignedOut },
+      { [requestedPathHeader]: "/applications?status=offer" },
+    );
+
+    await expect(requireUser()).rejects.toThrow("redirected");
+    expect(redirect).toHaveBeenCalledWith(signInPath({ redirectTo: "/applications?status=offer" }));
+  });
+
+  it("sends a signed-out visitor to plain sign-in when the requested path is unknown", async () => {
     given({ status: AuthenticationStatus.SignedOut });
+
+    await expect(requireUser()).rejects.toThrow("redirected");
+    expect(redirect).toHaveBeenCalledWith(signInPath());
+  });
+
+  it("drops a requested path that leads off-site", async () => {
+    given({ status: AuthenticationStatus.SignedOut }, { [requestedPathHeader]: "//evil.com" });
 
     await expect(requireUser()).rejects.toThrow("redirected");
     expect(redirect).toHaveBeenCalledWith(signInPath());
@@ -54,11 +71,16 @@ describe("requireUser", () => {
   it("says the session expired when the proxy found it so", async () => {
     given(
       { status: AuthenticationStatus.SignedOut },
-      { [signInReasonHeader]: SignInFailureReason.SessionExpired },
+      {
+        [signInReasonHeader]: SignInFailureReason.SessionExpired,
+        [requestedPathHeader]: routes.applications,
+      },
     );
 
     await expect(requireUser()).rejects.toThrow("redirected");
-    expect(redirect).toHaveBeenCalledWith(signInPath(SignInFailureReason.SessionExpired));
+    expect(redirect).toHaveBeenCalledWith(
+      signInPath({ reason: SignInFailureReason.SessionExpired, redirectTo: routes.applications }),
+    );
   });
 
   it("ignores a reason it does not know", async () => {

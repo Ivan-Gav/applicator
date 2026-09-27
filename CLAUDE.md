@@ -94,7 +94,10 @@ action. The only browser-to-Supabase hop is the user clicking the emailed link.
 1. **Pages are protected by placement inside the `(protected)` route group.**
    Its layout calls `requireUser()` once; pages carry no check of their own. A
    page that needs the user *reads* it with `currentUser()` (cached per request,
-   so layout and page share one call); the layout *decides* on access.
+   so layout and page share one call); the layout *decides* on access. The
+   mirror is the `(guest)` group (sign-in), whose layout calls
+   `requireAnonymous()`. `/auth/callback` stays outside both: it must also run
+   when a session already exists.
 2. **Every route handler and server action begins with `requireUser()`**, since
    no layout runs for them: they are independent HTTP entry points. The only
    exceptions are the sign-in entry points (`requestMagicLink` and
@@ -103,8 +106,14 @@ action. The only browser-to-Supabase hop is the user clicking the emailed link.
    check. It keeps no list of public or protected paths and never redirects: a
    request without a session passes through, and the layout or `requireUser()`
    redirects it. When Supabase refuses to renew a session, the proxy tags the
-   request (`signInReasonHeader`) so `requireUser()` can tell the user why.
-4. **RLS in the database is the last line of defence.** Every query runs with
+   request (`signInReasonHeader`) so `requireUser()` can tell the user why. It
+   also records the requested path (`requestedPathHeader`), which layouts
+   cannot read otherwise.
+4. **`redirectTo` is untrusted everywhere.** It carries the destination
+   through sign-in, and every place that reads it passes it through
+   `sameSitePath()` (`src/lib/same-site-path.ts`), including the callback,
+   where it returns from an email round trip.
+5. **RLS in the database is the last line of defence.** Every query runs with
    the user's access token through the request-bound server client; policies in
    the migrations isolate users even if a check is forgotten.
 

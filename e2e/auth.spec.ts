@@ -38,13 +38,24 @@ test.describe("with a stored session", () => {
     ).toBeVisible();
     await expect(page.getByRole("button", { name: messages.nav.signOut })).toBeVisible();
   });
+
+  test("sends the sign-in page on to the applications page", async ({ page }) => {
+    await page.goto(signInPath());
+
+    await expect(page).toHaveURL(isAt(afterSignInRoute));
+    await expect(
+      page.getByRole("heading", { level: 1, name: messages.applications.title }),
+    ).toBeVisible();
+  });
 });
 
 test.describe("without a session", () => {
-  test("sends the applications page to sign-in", async ({ page }) => {
+  test("sends the applications page to sign-in, remembering where it was going", async ({
+    page,
+  }) => {
     await page.goto(routes.applications);
 
-    await expect(page).toHaveURL(isAt(signInPath()));
+    await expect(page).toHaveURL(isAt(signInPath({ redirectTo: routes.applications })));
     await expect(page.getByRole("heading", { level: 1, name: t.title })).toBeVisible();
   });
 
@@ -69,7 +80,7 @@ test.describe("without a session", () => {
   test("callback with a malformed code explains that the link is not valid", async ({ page }) => {
     await page.goto(authCallbackPath({ [callbackParam.code]: "not-a-real-code" }));
 
-    await expect(page).toHaveURL(isAt(signInPath(SignInFailureReason.LinkInvalid)));
+    await expect(page).toHaveURL(isAt(signInPath({ reason: SignInFailureReason.LinkInvalid })));
     await expect(failureAlert(page)).toContainText(t.failure[SignInFailureReason.LinkInvalid]);
     await expect(page.getByRole("textbox", { name: t.emailLabel })).toBeVisible();
   });
@@ -82,7 +93,7 @@ test.describe("without a session", () => {
       }),
     );
 
-    await expect(page).toHaveURL(isAt(signInPath(SignInFailureReason.LinkExpired)));
+    await expect(page).toHaveURL(isAt(signInPath({ reason: SignInFailureReason.LinkExpired })));
     await expect(failureAlert(page)).toContainText(t.failure[SignInFailureReason.LinkExpired]);
     await expect(page.getByRole("textbox", { name: t.emailLabel })).toBeVisible();
   });
@@ -92,7 +103,7 @@ test.describe("without a session", () => {
     // happens when the link is opened on another device or in a private window.
     await page.goto(authCallbackPath({ [callbackParam.code]: randomUUID() }));
 
-    await expect(page).toHaveURL(isAt(signInPath(SignInFailureReason.VerifierMissing)));
+    await expect(page).toHaveURL(isAt(signInPath({ reason: SignInFailureReason.VerifierMissing })));
     await expect(failureAlert(page)).toContainText(t.failure[SignInFailureReason.VerifierMissing]);
   });
 
@@ -107,7 +118,7 @@ test.describe("without a session", () => {
     // The important assertion: a direct request afterwards must bounce, which
     // proves the cookies are gone rather than that a redirect happened once.
     await page.goto(routes.applications);
-    await expect(page).toHaveURL(isAt(signInPath()));
+    await expect(page).toHaveURL(isAt(signInPath({ redirectTo: routes.applications })));
     await expect(page.getByRole("heading", { level: 1, name: t.title })).toBeVisible();
   });
 });
@@ -123,7 +134,14 @@ test.describe("with an expired session", () => {
   test("sends the applications page to sign-in, saying why", async ({ page, context }) => {
     await page.goto(routes.applications);
 
-    await expect(page).toHaveURL(isAt(signInPath(SignInFailureReason.SessionExpired)));
+    await expect(page).toHaveURL(
+      isAt(
+        signInPath({
+          reason: SignInFailureReason.SessionExpired,
+          redirectTo: routes.applications,
+        }),
+      ),
+    );
     await expect(failureAlert(page)).toContainText(t.failure[SignInFailureReason.SessionExpired]);
     // Checked by value, not by name: when a page redirects after the proxy has
     // set a cookie, Next.js repeats that cookie on the redirect without its

@@ -16,7 +16,11 @@ export const messages = {
   },
 
   home: {
-    getStarted: "Get started",
+    summary:
+      "Keep every job application in one place: where you applied, where it stands, and how long each one has gone without a response.",
+    signIn: "Sign in",
+    openApplications: "Open applications",
+    sourceCode: "Source code on GitHub",
   },
 
   nav: {

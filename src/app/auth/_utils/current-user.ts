@@ -27,3 +27,13 @@ export async function currentUser(): Promise<User | null> {
       throw new AuthUnavailableError();
   }
 }
+
+/**
+ * currentUser() for pages open to everyone: when Supabase cannot be reached
+ * they render for a visitor instead of failing, since nothing on them needs
+ * the user to exist.
+ */
+export async function currentUserIfReachable(): Promise<User | null> {
+  const result = await authentication();
+  return result.status === AuthenticationStatus.SignedIn ? result.user : null;
+}
