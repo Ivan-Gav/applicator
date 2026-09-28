@@ -10,7 +10,6 @@ import {
   type Authentication,
   AuthenticationStatus,
   SignInFailureReason,
-  type User,
 } from "@/domain/user/model";
 import { GET } from "./route";
 
@@ -20,12 +19,6 @@ vi.mock("@/adapters/supabase/auth", () => ({
 }));
 
 const origin = "http://localhost:3000";
-
-const user: User = {
-  id: "00000000-0000-4000-8000-000000000000",
-  email: "ivan@example.test",
-  createdAt: new Date("2026-09-01T08:30:00.000Z"),
-};
 
 function given(authentication: Authentication, completion: SignInCompletion = { ok: true }) {
   vi.mocked(authenticate).mockResolvedValue(authentication);
@@ -68,13 +61,6 @@ describe("GET /auth/callback", () => {
       await expect(landingOf(redirectTo)).resolves.toBe(afterSignInRoute);
     },
   );
-
-  it("honours the destination when the link is reopened with a live session", async () => {
-    given({ status: AuthenticationStatus.SignedIn, user });
-
-    await expect(landingOf("/applications/42")).resolves.toBe("/applications/42");
-    expect(completeSignInFromCallback).not.toHaveBeenCalled();
-  });
 
   it("keeps the destination on the way back to sign-in after a failure", async () => {
     given(signedOut, { ok: false, reason: SignInFailureReason.LinkExpired });

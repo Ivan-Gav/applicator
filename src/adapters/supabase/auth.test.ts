@@ -5,12 +5,14 @@ import type { NextRequest } from "next/server";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthenticationStatus } from "@/domain/user/model";
 import { authenticate } from "./auth";
-import { authUserPath, supabaseErrorCode } from "./auth.constants";
+import { supabaseErrorCode } from "./auth.constants";
 import {
   fakeAnonKey,
   fakeSupabaseUrl,
   requestWith,
   requestWithSession,
+  supabaseUser,
+  userEndpoint,
 } from "./proxy-session.fixtures";
 
 vi.mock("next/headers", () => ({ cookies: vi.fn() }));
@@ -21,16 +23,6 @@ function withCookiesOf(request: NextRequest) {
     request.cookies as unknown as Awaited<ReturnType<typeof cookies>>,
   );
 }
-
-const userEndpoint = new URL(authUserPath, fakeSupabaseUrl).href;
-const supabaseUser = {
-  id: "00000000-0000-4000-8000-000000000000",
-  aud: "authenticated",
-  email: "ivan@example.test",
-  created_at: "2026-09-01T08:30:00.000Z",
-  app_metadata: {},
-  user_metadata: {},
-};
 
 const server = setupServer();
 

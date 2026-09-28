@@ -181,6 +181,13 @@ proxy matcher, which Next.js requires as a static literal.
 - API boundaries in tests: MSW.
 - Repositories in unit tests: substitute an in-memory implementation of the interface.
 - E2E: Playwright with `storageState` for auth and a seeded database.
+- **E2E is for what breaks at the seams**: cookies arriving, redirects
+  happening, data surviving a reload. Everything else belongs in faster tests
+  one level down. Needing a server is not needing a browser: a route handler
+  is a function from a request to a response, so call `GET`/`POST` with a
+  constructed `Request` and assert on the response. Fake Supabase at the
+  network with MSW, so the adapter and the SDK still run and every shape
+  matches what the real client produces.
 - Every new feature ships with tests in the same commit. Do not defer tests.
 
 ## Git

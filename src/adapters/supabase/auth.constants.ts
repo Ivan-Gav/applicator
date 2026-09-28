@@ -13,6 +13,7 @@ export function sessionCookieName(supabaseUrl: string): string {
   return `${authCookiePrefix}${projectLabel}${sessionCookieSuffix}`;
 }
 
+export const authOtpPath = "/auth/v1/otp";
 export const authTokenPath = "/auth/v1/token";
 export const authUserPath = "/auth/v1/user";
 
@@ -22,6 +23,7 @@ export const callbackParam = {
   tokenHash: "token_hash",
   error: "error",
   errorCode: "error_code",
+  errorDescription: "error_description",
 } as const;
 
 // https://supabase.com/docs/guides/auth/debugging/error-codes
@@ -33,6 +35,7 @@ export const supabaseErrorCode = {
   pkceCodeVerifierNotFound: "pkce_code_verifier_not_found",
   otpExpired: "otp_expired",
   flowStateExpired: "flow_state_expired",
+  flowStateNotFound: "flow_state_not_found",
   refreshTokenNotFound: "refresh_token_not_found",
   badJwt: "bad_jwt",
 } as const;

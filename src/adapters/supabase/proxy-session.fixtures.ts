@@ -1,12 +1,13 @@
-// Test support for the proxy: a Supabase Auth token endpoint faked with MSW,
-// and requests carrying session cookies shaped the way @supabase/ssr writes
-// them. Lives here because only this directory may import @supabase/ssr.
+// Test support for code that reads the session: Supabase Auth endpoints faked
+// with MSW, and session cookies shaped the way @supabase/ssr writes them.
+// Lives here because only this directory may import @supabase/ssr.
 import { stringFromBase64URL, stringToBase64URL } from "@supabase/ssr";
 import { HttpResponse, http } from "msw";
 import { NextRequest } from "next/server";
 import { routes } from "@/app/routes";
 import {
   authTokenPath,
+  authUserPath,
   sessionCookieEncodingPrefix,
   sessionCookieName,
   supabaseErrorCode,
@@ -19,8 +20,18 @@ const appOrigin = "http://localhost:3000";
 
 export const sessionCookie = sessionCookieName(fakeSupabaseUrl);
 const tokenEndpoint = new URL(authTokenPath, fakeSupabaseUrl).href;
+export const userEndpoint = new URL(authUserPath, fakeSupabaseUrl).href;
 
 const user = { id: "00000000-0000-4000-8000-000000000000", aud: "authenticated" };
+
+/** What GET /auth/v1/user returns for a valid access token. */
+export const supabaseUser = {
+  ...user,
+  email: "ivan@example.test",
+  created_at: "2026-09-01T08:30:00.000Z",
+  app_metadata: {},
+  user_metadata: {},
+};
 export const stored = { accessToken: "stored-access", refreshToken: "stored-refresh" };
 export const rotated = { accessToken: "rotated-access", refreshToken: "rotated-refresh" };
 
@@ -47,16 +58,18 @@ export function requestWith(
   });
 }
 
+/** Session cookies whose access token expires in `secondsLeft` (negative: already expired). */
+export function sessionCookies(secondsLeft: number): Record<string, string> {
+  const value = JSON.stringify(session(stored, secondsLeft));
+  return { [sessionCookie]: `${sessionCookieEncodingPrefix}${stringToBase64URL(value)}` };
+}
+
 /** A request whose access token expires in `secondsLeft` (negative: already expired). */
 export function requestWithSession(
   secondsLeft: number,
   headers: Record<string, string> = {},
 ): NextRequest {
-  const value = JSON.stringify(session(stored, secondsLeft));
-  return requestWith(
-    { [sessionCookie]: `${sessionCookieEncodingPrefix}${stringToBase64URL(value)}` },
-    headers,
-  );
+  return requestWith(sessionCookies(secondsLeft), headers);
 }
 
 /** The access token inside a session cookie value, or undefined when there is none. */

@@ -1,6 +1,4 @@
-import { randomUUID } from "node:crypto";
 import { expect, type Page, test } from "@playwright/test";
-import { callbackParam, supabaseErrorCode } from "@/adapters/supabase/auth.constants";
 import { afterSignInRoute, routes, signInPath } from "@/app/routes";
 import { SignInFailureReason } from "@/domain/user/model";
 import { messages } from "@/ui/messages";
@@ -13,7 +11,7 @@ import {
   signOutUser,
 } from "./support/auth";
 import { forgedSessionCookieName, plantForgedSession } from "./support/session";
-import { authCallbackPath, isAt } from "./support/urls";
+import { isAt } from "./support/urls";
 
 const t = messages.signIn;
 
@@ -75,36 +73,6 @@ test.describe("without a session", () => {
       page.getByRole("heading", { level: 1, name: messages.applications.title }),
     ).toBeVisible();
     await expect(page.getByText(formUser.email)).toBeVisible();
-  });
-
-  test("callback with a malformed code explains that the link is not valid", async ({ page }) => {
-    await page.goto(authCallbackPath({ [callbackParam.code]: "not-a-real-code" }));
-
-    await expect(page).toHaveURL(isAt(signInPath({ reason: SignInFailureReason.LinkInvalid })));
-    await expect(failureAlert(page)).toContainText(t.failure[SignInFailureReason.LinkInvalid]);
-    await expect(page.getByRole("textbox", { name: t.emailLabel })).toBeVisible();
-  });
-
-  test("callback with an expired-link error explains that the link expired", async ({ page }) => {
-    await page.goto(
-      authCallbackPath({
-        [callbackParam.error]: "access_denied",
-        [callbackParam.errorCode]: supabaseErrorCode.otpExpired,
-      }),
-    );
-
-    await expect(page).toHaveURL(isAt(signInPath({ reason: SignInFailureReason.LinkExpired })));
-    await expect(failureAlert(page)).toContainText(t.failure[SignInFailureReason.LinkExpired]);
-    await expect(page.getByRole("textbox", { name: t.emailLabel })).toBeVisible();
-  });
-
-  test("callback in a browser without the verifier asks for the same browser", async ({ page }) => {
-    // A fresh context holds no PKCE verifier cookie, which is exactly what
-    // happens when the link is opened on another device or in a private window.
-    await page.goto(authCallbackPath({ [callbackParam.code]: randomUUID() }));
-
-    await expect(page).toHaveURL(isAt(signInPath({ reason: SignInFailureReason.VerifierMissing })));
-    await expect(failureAlert(page)).toContainText(t.failure[SignInFailureReason.VerifierMissing]);
   });
 
   test("signing out ends the session for the next request", async ({ page }) => {
