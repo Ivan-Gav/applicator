@@ -6,15 +6,10 @@ import { AuthUnavailableError } from "./auth-unavailable-error";
 const authentication = cache(authenticate);
 
 /**
- * Reads the signed-in user, or null. Cached per request with React's cache,
- * so the protected layout deciding on access and a page reading the user
- * inside the same request share one verification call to Supabase.
+ * The signed-in user, or null. Cached per request, so layout and page share
+ * one call. Reads only; requireUser() decides on access.
  *
- * Reading only: a page that needs the user calls this and handles null.
- * Deciding on access is requireUser().
- *
- * Throws AuthUnavailableError when Supabase cannot be reached, since null
- * would claim the user is signed out.
+ * Throws AuthUnavailableError when Supabase cannot be reached.
  */
 export async function currentUser(): Promise<User | null> {
   const result = await authentication();
@@ -28,11 +23,7 @@ export async function currentUser(): Promise<User | null> {
   }
 }
 
-/**
- * currentUser() for pages open to everyone: when Supabase cannot be reached
- * they render for a visitor instead of failing, since nothing on them needs
- * the user to exist.
- */
+/** currentUser() for public pages: null when Supabase cannot be reached. */
 export async function currentUserIfReachable(): Promise<User | null> {
   const result = await authentication();
   return result.status === AuthenticationStatus.SignedIn ? result.user : null;

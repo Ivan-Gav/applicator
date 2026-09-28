@@ -4,8 +4,7 @@ export type User = {
   createdAt: Date;
 };
 
-// Why a sign-in attempt did not end in a session. The values travel in the
-// sign-in URL, so they are stable identifiers, not display text.
+// The values travel in the sign-in URL: stable identifiers, not display text.
 export const SignInFailureReason = {
   LinkExpired: "link_expired",
   LinkInvalid: "link_invalid",
@@ -22,10 +21,8 @@ export function isSignInFailureReason(value: unknown): value is SignInFailureRea
   return typeof value === "string" && (signInFailureReasons as readonly string[]).includes(value);
 }
 
-// What the proxy finds on an incoming request. Expired means a session was
-// there but was refused renewal, as opposed to never having been there.
-// Unavailable means renewal could not be attempted at all: the session may be
-// perfectly valid, so it must survive until the identity provider is back.
+// What the proxy finds on a request. Expired: renewal was refused.
+// Unavailable: renewal could not be attempted; the session may still be valid.
 export const SessionState = {
   Active: "active",
   Missing: "missing",
@@ -34,8 +31,7 @@ export const SessionState = {
 } as const;
 export type SessionState = (typeof SessionState)[keyof typeof SessionState];
 
-// The answer to "who is signed in?". Unavailable is not SignedOut: treating
-// an outage as signed out would send a signed-in user to the sign-in form.
+// Unavailable is not SignedOut: the session may still be valid.
 export const AuthenticationStatus = {
   SignedIn: "signed_in",
   SignedOut: "signed_out",

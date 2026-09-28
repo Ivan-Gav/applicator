@@ -23,10 +23,8 @@ async function requestOrigin(): Promise<string> {
   return `${requestHeaders.get("x-forwarded-proto") ?? "http"}://${host}`;
 }
 
-// Deliberately not behind requireUser(): this is how a session comes to exist.
-// It is the one server action a signed-out visitor is meant to reach.
-// `redirectTo` is bound by the sign-in page, which makes it client-supplied
-// like any other argument.
+// Not behind requireUser(): it creates the session. `redirectTo` is bound by
+// the sign-in page, so it is client-supplied.
 export async function requestMagicLink(
   redirectTo: unknown,
   input: unknown,
@@ -35,8 +33,7 @@ export async function requestMagicLink(
   if (!parsed.success) {
     return { status: MagicLinkRequestStatus.InvalidEmail };
   }
-  // The link must bring the user back to the same origin that holds the PKCE
-  // verifier cookie, so the callback URL is derived from this request.
+  // The callback must hit the origin that holds the PKCE verifier cookie.
   const callbackUrl = new URL(
     magicLinkCallbackPath(sameSitePath(redirectTo)),
     await requestOrigin(),
@@ -44,12 +41,10 @@ export async function requestMagicLink(
   return sendMagicLink(parsed.data.email, callbackUrl);
 }
 
-// A server action, never a GET link: a GET sign-out could be triggered by any
-// third-party page with an image tag.
+// Never a GET: any third-party page could trigger it with an image tag.
 export async function signOut(): Promise<void> {
   await requireUser();
   await signOutCurrentSession();
-  // Nothing rendered for the signed-in user may be served from cache afterwards.
   revalidatePath(routes.home, "layout");
   redirect(routes.signIn);
 }

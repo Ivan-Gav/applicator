@@ -9,23 +9,16 @@ function redirectTo(request: NextRequest, path: string): NextResponse {
 }
 
 /**
- * Where the magic link lands. Every failure ends on the sign-in page with a
- * reason; the user needs the same thing in each case, a fresh link.
- *
- * Deliberately not behind requireUser(): this handler is what turns a link
- * into a session, so by definition its caller has none yet.
- *
- * `redirectTo` has been through an email and is validated again here.
+ * Where the magic link lands; every failure ends on the sign-in page with a
+ * reason. Not behind requireUser(): it creates the session.
  */
 export async function GET(request: NextRequest) {
   const requested = sameSitePath(request.nextUrl.searchParams.get(redirectToParam));
   const destination = afterSignInPath(requested);
 
-  // Reloading this URL replays a code that was already exchanged. The session
-  // from the first exchange is still in the cookies, so honour it rather than
-  // telling a signed-in user that sign-in failed.
-  // With Supabase unreachable this falls through, and the exchange below
-  // reports the outage.
+  // A reload replays an already exchanged code; the session from the first
+  // exchange is still in the cookies. When Supabase is unreachable, the
+  // exchange below reports it.
   if ((await authenticate()).status === AuthenticationStatus.SignedIn) {
     return redirectTo(request, destination);
   }

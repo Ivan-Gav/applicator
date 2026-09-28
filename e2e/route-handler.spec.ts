@@ -4,10 +4,6 @@ import { SignInFailureReason } from "@/domain/user/model";
 import { authStateFile, sharedUser } from "./support/auth";
 import { plantForgedSession } from "./support/session";
 
-// Route handlers are independent HTTP entry points: the (protected) layout
-// never runs for them, so their own requireUser() call is all that stands
-// between an anonymous request and the data. These specs hit one directly.
-
 function redirectTarget(response: { headers(): Record<string, string>; url(): string }): string {
   const location = new URL(response.headers().location ?? "", response.url());
   return `${location.pathname}${location.search}`;
@@ -31,9 +27,8 @@ test("a protected route handler refuses a request with no session", async ({ req
 });
 
 test("a protected route handler refuses a forged session cookie", async ({ browser, baseURL }) => {
-  // A cookie shaped like a real session, with a far-future exp claim, walks
-  // straight through the proxy (which never verifies the token). Only
-  // the handler's requireUser() call, which verifies with Supabase, stops it.
+  // The proxy never verifies the token, so a forged cookie that has not
+  // expired reaches the handler.
   const context = await browser.newContext();
   await plantForgedSession(context, baseURL, 3600);
 

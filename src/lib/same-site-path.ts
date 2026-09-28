@@ -5,17 +5,13 @@ function isSameSiteAbsolutePath(value: string): boolean {
     return false;
   }
   // The URL parser drops tabs and newlines and treats `\` as `/`, so "/\t/evil.com"
-  // passes the prefix check above yet resolves to another host. Resolving it
-  // the way a browser would catches every such spelling.
+  // passes the prefix check above yet resolves to another host.
   return new URL(value, probeOrigin).origin === probeOrigin;
 }
 
 /**
- * `value` when it is a path on this site, otherwise null. Guards every
- * user-supplied redirect destination against pointing off-site.
- *
- * The decoded form is checked as well: a value decoded once more on its way
- * through a query string must not turn into another host.
+ * `value` when it is a path on this site, otherwise null. The decoded form is
+ * checked too: a query string may decode it once more.
  */
 export function sameSitePath(value: unknown): string | null {
   if (typeof value !== "string" || !isSameSiteAbsolutePath(value)) {

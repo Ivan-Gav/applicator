@@ -13,8 +13,6 @@ export const afterSignInRoute = routes.applications;
 
 export const sourceRepositoryUrl = "https://github.com/Ivan-Gav/applicator";
 
-// Where to go once signed in. Read by the sign-in page and the magic link
-// callback, and by the guest layout when a signed-in user lands on sign-in.
 export const redirectToParam = "redirectTo";
 
 export const signInSearchParam = {
@@ -22,15 +20,13 @@ export const signInSearchParam = {
   redirectTo: redirectToParam,
 } as const;
 
-// Carries a SignInFailureReason from the proxy to requireUser(), which is where
-// the redirect to sign-in happens. Only the proxy may set it; a copy sent by a
-// client is stripped there. Forged, it could only change which message the
-// sign-in page shows.
+// A SignInFailureReason from the proxy to requireUser(). Only the proxy may set
+// it; a client's copy is stripped there.
 export const signInReasonHeader = "x-sign-in-reason";
 
-// The path and query of the request, set by the proxy, because layouts get
-// neither. Only the proxy may set it; a copy sent by a client is overwritten
-// there. Every reader still passes it through sameSitePath().
+// The path and query of the request, which layouts cannot read otherwise. Only
+// the proxy may set it; a client's copy is overwritten there. Every reader
+// still passes it through sameSitePath().
 export const requestedPathHeader = "x-requested-path";
 
 export type SignInPathOptions = {

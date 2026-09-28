@@ -23,17 +23,12 @@ function stateOf(hasSession: boolean, error: AuthError | null): SessionState {
   if (!error) {
     return hasSession ? SessionState.Active : SessionState.Missing;
   }
-  // A network failure is no verdict on the session. The SDK keeps the cookies
-  // in that case and so does the proxy: the session resumes by itself once
-  // Supabase answers again. Any other error is a refusal, and the SDK has
-  // already cleared the dead session through setAll.
+  // On a network failure the SDK keeps the cookies. Any other error is a
+  // refusal, and the SDK has already cleared the session through setAll.
   return isAuthRetryableFetchError(error) ? SessionState.Unavailable : SessionState.Expired;
 }
 
-/**
- * Loads the session from the request cookies, rotating the tokens on the way
- * when they are close to expiry, following the Supabase SSR guide for Next.js.
- */
+/** Loads the session from the request cookies, rotating the tokens when they are close to expiry. */
 export async function resolveSession(request: NextRequest): Promise<ProxySession> {
   const cookiesToSet: CookiesToSet = [];
   const responseHeaders: ResponseHeaders = {};
@@ -51,19 +46,15 @@ export async function resolveSession(request: NextRequest): Promise<ProxySession
           request.cookies.set(name, value);
         }
         cookiesToSet.push(...cookies);
-        // Cache-control headers that keep a CDN from serving one user's
-        // session cookies to another.
+        // Cache-control headers that keep a CDN from sharing session cookies.
         Object.assign(responseHeaders, headers);
       },
     },
   });
 
-  // Whether a refresh is due is left to the SDK: getSession() reads the cookie
-  // locally and refreshes only inside the SDK's own expiry margin. A margin of
-  // ours would have to track that one, and the server client applies the same
-  // margin inside getUser(), where it cannot write cookies. Letting the SDK
-  // decide here guarantees the page never finds the token due after the proxy.
-  // The session is checked for presence only: it is unverified, never identity.
+  // getSession() refreshes within the same expiry margin getUser() uses, so the
+  // page never finds a token due after the proxy. The result is unverified:
+  // checked for presence only, never used as identity.
   const { data, error } = await supabase.auth.getSession();
 
   return {

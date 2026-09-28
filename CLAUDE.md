@@ -204,4 +204,6 @@ This applies even when a task seems to imply a commit.
 - Explain non-obvious choices briefly — the author is reviewing everything to learn,
   not just accepting output.
 - No placeholder or mock data left in source files.
-- No comments explaining what the code does; only why, and only when non-obvious.
+- Comments state only the minimal current fact the code cannot show: a
+  constraint, a contract or an external quirk. No restating the code, no
+  history, no argued motives.

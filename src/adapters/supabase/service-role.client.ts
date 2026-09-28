@@ -1,10 +1,6 @@
 /**
  * SERVICE ROLE CLIENT: BYPASSES ROW LEVEL SECURITY.
- *
- * Used by the Playwright setup to mint magic links without a mailbox, and by
- * nothing else. No runtime application code may import this module; ESLint
- * refuses the import outside e2e/. Serving a user request with this client
- * would hand every user every other user's data.
+ * For e2e/ only (enforced by ESLint); must never serve a user request.
  */
 import { createClient } from "@supabase/supabase-js";
 import { supabaseUrl } from "./env";

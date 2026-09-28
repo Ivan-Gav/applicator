@@ -23,7 +23,7 @@ function failed(reason: SignInFailureReason): SignInCompletion {
   return { ok: false, reason };
 }
 
-// "For security purposes, you can only request this after 42 seconds."
+// Supabase's message: "For security purposes, you can only request this after 42 seconds."
 const retryAfterPattern = /after (\d+) seconds?/;
 
 // Supabase issues auth codes as UUIDs. Anything else is refused before it
@@ -94,11 +94,7 @@ async function exchangeCodeForSession(code: string): Promise<SignInCompletion> {
   }
 }
 
-/**
- * Token-hash verification, the flow Supabase documents for server-side apps.
- * Needs no verifier cookie, so it also works for links minted by the admin API,
- * which is what the E2E suite relies on.
- */
+/** Needs no verifier cookie, so it also accepts links minted by the admin API (E2E). */
 async function verifyMagicLinkToken(tokenHash: string): Promise<SignInCompletion> {
   const supabase = await createSupabaseServerClient();
   try {
@@ -109,11 +105,6 @@ async function verifyMagicLinkToken(tokenHash: string): Promise<SignInCompletion
   }
 }
 
-/**
- * Turns the query string Supabase sends to the magic link callback into a
- * session. Everything about the shape of that redirect is Supabase's contract,
- * which is why it is read here and not in the route handler.
- */
 export async function completeSignInFromCallback(
   params: URLSearchParams,
 ): Promise<SignInCompletion> {
@@ -146,11 +137,7 @@ export async function completeSignInFromCallback(
 const signedOut: Authentication = { status: AuthenticationStatus.SignedOut };
 const unavailable: Authentication = { status: AuthenticationStatus.Unavailable };
 
-/**
- * The signed-in user, verified with Supabase. This is the only server-side
- * identity check: getUser() sends the token to the Auth server, whereas
- * getSession() would merely decode a cookie anyone can forge.
- */
+/** The signed-in user, verified with Supabase. */
 export async function authenticate(): Promise<Authentication> {
   const supabase = await createSupabaseServerClient();
   let data: { user: SupabaseUser | null };
@@ -170,13 +157,10 @@ export async function authenticate(): Promise<Authentication> {
 export async function signOutCurrentSession(): Promise<void> {
   const supabase = await createSupabaseServerClient();
   try {
-    // The default scope is "global", which revokes the user's sessions on
-    // every device. Someone pressing "sign out" on one laptop expects only
-    // that laptop to be signed out.
+    // The default scope "global" would sign out every device.
     await supabase.auth.signOut({ scope: "local" });
   } catch {
-    // Supabase unreachable: the cookies are removed below regardless, which
-    // ends the session as far as this browser is concerned.
+    // Supabase unreachable: the cookies are removed below regardless.
   }
 
   const cookieStore = await cookies();

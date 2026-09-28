@@ -38,4 +38,5 @@ export const supabaseErrorCode = {
   flowStateNotFound: "flow_state_not_found",
   refreshTokenNotFound: "refresh_token_not_found",
   badJwt: "bad_jwt",
+  emailExists: "email_exists",
 } as const;

@@ -15,16 +15,11 @@ import { isAt } from "./support/urls";
 
 const t = messages.signIn;
 
-// Next.js adds its own live region with role="alert" for route announcements,
-// so the failure message is addressed by its accessible name.
+// Next.js adds its own role="alert" live region for route announcements.
 function failureAlert(page: Page) {
   return page.getByRole("alert", { name: t.failureTitle });
 }
 
-// The first two specs deliberately bypass the sign-in form. A test should go
-// through the UI only for the thing it is actually testing: here that is
-// route protection, so the session comes from the setup project's storageState
-// and the form is exercised exactly once, in the spec dedicated to it.
 test.describe("with a stored session", () => {
   test.use({ storageState: authStateFile });
 
@@ -65,7 +60,6 @@ test.describe("without a session", () => {
     await expect(page.getByRole("heading", { level: 1, name: t.inbox.title })).toBeVisible();
     await expect(page.getByText(formUser.email)).toBeVisible();
 
-    // Tests never read a mailbox: the link comes from the admin API instead.
     await page.goto(await magicLinkCallbackUrl(formUser.email));
 
     await expect(page).toHaveURL(isAt(afterSignInRoute));
@@ -76,24 +70,21 @@ test.describe("without a session", () => {
   });
 
   test("signing out ends the session for the next request", async ({ page }) => {
-    // Own session on purpose: signing out revokes it server-side, and the
-    // shared storageState must keep working for the other specs.
+    // Own session: signing out revokes it server-side, and the shared
+    // storageState must keep working.
     await signInWithMagicLink(page, signOutUser.email);
 
     await page.getByRole("button", { name: messages.nav.signOut }).click();
     await expect(page).toHaveURL(isAt(signInPath()));
 
-    // The important assertion: a direct request afterwards must bounce, which
-    // proves the cookies are gone rather than that a redirect happened once.
     await page.goto(routes.applications);
     await expect(page).toHaveURL(isAt(signInPath({ redirectTo: routes.applications })));
     await expect(page.getByRole("heading", { level: 1, name: t.title })).toBeVisible();
   });
 });
 
-// A session Supabase refuses to renew: an expired access token with a refresh
-// token it does not know, which is what a revoked or long-idle session looks
-// like to the proxy.
+// An expired access token with an unknown refresh token: how a revoked or
+// long-idle session looks to the proxy.
 test.describe("with an expired session", () => {
   test.beforeEach(async ({ context, baseURL }) => {
     await plantForgedSession(context, baseURL, -60);
@@ -121,7 +112,6 @@ test.describe("with an expired session", () => {
   });
 
   test("still signs in through a magic link", async ({ page }) => {
-    // The callback is the only request that can replace a dead session.
     await signInWithMagicLink(page, expiredSessionUser.email);
 
     await expect(page.getByText(expiredSessionUser.email)).toBeVisible();

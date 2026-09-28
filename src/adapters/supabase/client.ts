@@ -3,8 +3,7 @@ import { cookies } from "next/headers";
 import type { Database } from "./database.types";
 import { supabaseAnonKey, supabaseUrl } from "./env";
 
-// Nothing in the browser reads these cookies (there is no browser client), so
-// both the session and the PKCE code verifier can stay out of reach of scripts.
+// httpOnly is safe: there is no browser client to read these cookies.
 export const authCookieOptions: CookieOptions = {
   path: "/",
   sameSite: "lax",
@@ -12,11 +11,7 @@ export const authCookieOptions: CookieOptions = {
   secure: process.env.NODE_ENV === "production",
 };
 
-/**
- * A client bound to the cookies of the current request. It carries the user's
- * access token, so RLS applies to every query it makes. Create one per request;
- * never share it across requests.
- */
+/** Carries the user's access token, so RLS applies. One per request; never shared. */
 export async function createSupabaseServerClient() {
   const cookieStore = await cookies();
 
@@ -32,9 +27,7 @@ export async function createSupabaseServerClient() {
             cookieStore.set(name, value, options);
           }
         } catch {
-          // Server Components cannot write cookies. Reaching this branch is
-          // harmless: the proxy already refreshed the session on the way in and
-          // wrote the new cookies onto its own response.
+          // Server Components cannot write cookies; the proxy has already written the refreshed ones.
         }
       },
     },

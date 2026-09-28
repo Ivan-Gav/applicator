@@ -6,15 +6,8 @@ import { currentUser } from "./current-user";
 import { requestedPath } from "./requested-path";
 
 /**
- * Decides on access. Verifies the token with Supabase (getUser, never
- * getSession) and redirects to /sign-in when there is no valid session,
- * carrying the requested path so sign-in can return there, and saying why
- * when the proxy found a session that had expired.
- *
- * Called in exactly two kinds of places:
- *   - the (protected) route group's layout, once, covering every page in it
- *   - the first statement of every route handler and server action, because
- *     no layout runs for those: they are independent HTTP entry points
+ * Decides on access: redirects to sign-in without a valid session, carrying
+ * the requested path and, if the proxy found one, the reason.
  *
  * Throws AuthUnavailableError when Supabase cannot be reached.
  */

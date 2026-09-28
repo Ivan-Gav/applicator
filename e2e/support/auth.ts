@@ -1,6 +1,6 @@
 import path from "node:path";
 import { expect, type Page } from "@playwright/test";
-import { callbackParam } from "@/adapters/supabase/auth.constants";
+import { callbackParam, supabaseErrorCode } from "@/adapters/supabase/auth.constants";
 import { createServiceRoleClient } from "@/adapters/supabase/service-role.client";
 import { afterSignInRoute } from "@/app/routes";
 import { authCallbackPath, isAt } from "./urls";
@@ -18,17 +18,14 @@ export const expiredSessionUser = { email: "e2e-expired-session@applicator.test"
 export async function ensureUser(email: string): Promise<void> {
   const admin = createServiceRoleClient();
   const { error } = await admin.auth.admin.createUser({ email, email_confirm: true });
-  if (error && error.code !== "email_exists") {
+  if (error && error.code !== supabaseErrorCode.emailExists) {
     throw error;
   }
 }
 
 /**
- * A callback URL that signs `email` in without a mailbox. The admin API's
- * action_link is not usable here: GoTrue only issues a PKCE code for tokens
- * created by a PKCE request, and admin-generated tokens never are. The token
- * hash from the same response goes through the callback's verifyOtp path
- * instead, which is the flow Supabase documents for server-side apps.
+ * A callback URL that signs `email` in without a mailbox. Uses the token hash:
+ * the admin API's action_link carries no PKCE code.
  */
 export async function magicLinkCallbackUrl(email: string): Promise<string> {
   const admin = createServiceRoleClient();

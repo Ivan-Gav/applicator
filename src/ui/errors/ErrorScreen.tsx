@@ -3,8 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/ui/
 import { messages } from "@/ui/messages";
 
 export type ErrorScreenProps = {
-  // An outage of the identity provider, which says nothing about the session:
-  // the user is told they are still signed in rather than that something broke.
+  // Supabase Auth is unreachable; the session itself may be fine.
   authUnavailable: boolean;
   retry: () => void;
 };

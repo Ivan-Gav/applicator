@@ -6,7 +6,6 @@ import { messages } from "@/ui/messages";
 
 const t = messages.home;
 
-// Public in both states: a signed-in visitor is offered the app, not sent to it.
 export default async function Home() {
   const user = await currentUserIfReachable();
 
@@ -24,7 +23,6 @@ export default async function Home() {
             <Link href={signInPath()}>{t.signIn}</Link>
           </Button>
         )}
-        {/* A second action (demo account) goes here, beside the primary one. */}
       </div>
       <a href={sourceRepositoryUrl} className="text-sm underline underline-offset-4">
         {t.sourceCode}

@@ -1,14 +1,7 @@
 import type { ApplicationStatus } from "@/domain/application/model";
 import { SignInFailureReason } from "@/domain/user/model";
 
-/**
- * Every user-facing string, grouped by screen. Components read text only from
- * here, so the next-intl step can turn this object into messages/en.json and a
- * German twin without hunting through the tree.
- *
- * Parameterised messages are functions for now; next-intl will express them as
- * ICU placeholders instead.
- */
+/** Every user-facing string, grouped by screen. */
 export const messages = {
   app: {
     name: "Applicator",

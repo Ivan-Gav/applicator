@@ -14,7 +14,6 @@ const amount = z.int32().nonnegative().nullable().default(null);
 export const salaryRangeSchema = z
   .object({ min: amount, max: amount })
   .refine((range) => range.min === null || range.max === null || range.min <= range.max, {
-    message: "min must not exceed max",
     path: ["min"],
   });
 
@@ -27,7 +26,7 @@ export const salarySchema = z.object({
     z
       .string()
       .trim()
-      .regex(/^[A-Za-z]{3}$/, "must be an ISO 4217 code")
+      .regex(/^[A-Za-z]{3}$/)
       .toUpperCase()
       .nullable()
       .default("EUR"),
@@ -45,8 +44,7 @@ export const contactSchema = z.object({
 
 export const applicationStatusSchema = z.enum(applicationStatuses);
 
-// Status, appliedAt and lastContactAt are deliberately absent: they change only
-// through the transition rules, never by direct edit.
+// Status, appliedAt and lastContactAt change only through the transition rules.
 const editableFields = {
   companyName: z.string().trim().min(1).max(200),
   positionTitle: z.string().trim().min(1).max(200),
@@ -91,15 +89,12 @@ export const createApplicationSchema = z.object({
   notes: editableFields.notes.default(null),
 });
 
-// Built from the default-free field set on purpose: a partial schema derived
-// from createApplicationSchema would fill absent keys with defaults and turn a
-// one-field edit into a reset of every other field.
+// Must not derive from createApplicationSchema: its defaults would fill absent
+// keys and reset every field the patch leaves out.
 export const updateApplicationSchema = z
   .object(editableFields)
   .partial()
-  .refine((patch) => Object.values(patch).some((value) => value !== undefined), {
-    message: "at least one field must be provided",
-  });
+  .refine((patch) => Object.values(patch).some((value) => value !== undefined));
 
 export type CreateApplicationInput = z.input<typeof createApplicationSchema>;
 export type CreateApplication = z.output<typeof createApplicationSchema>;

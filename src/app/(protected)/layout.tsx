@@ -6,9 +6,8 @@ import { routes } from "@/app/routes";
 import { Button } from "@/ui/kit/button";
 import { messages } from "@/ui/messages";
 
-// The one place pages are protected: everything under (protected) is covered
-// by living here, and pages carry no check of their own. Route handlers and
-// server actions are not covered by any layout and call requireUser() themselves.
+// Protects every page in this group. Route handlers and server actions are not
+// covered and call requireUser() themselves.
 export default async function ProtectedLayout({ children }: { children: ReactNode }) {
   const user = await requireUser();
 
