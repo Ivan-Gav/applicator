@@ -10,8 +10,8 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       include: ["src/**/*.{ts,tsx}"],
-      // src/ui/kit is vendored shadcn output, not code this project owns.
-      exclude: ["src/ui/kit/**", "**/*.test.{ts,tsx}", "**/*.d.ts"],
+      // src/ui/kit is vendored shadcn output; src/test holds test doubles.
+      exclude: ["src/ui/kit/**", "src/test/**", "**/*.test.{ts,tsx}", "**/*.d.ts"],
       reporter: ["text", "html", "lcov"],
     },
     projects: [
@@ -25,6 +25,7 @@ export default defineConfig({
             "src/lib/**/*.test.ts",
             "src/adapters/**/*.test.ts",
             "src/app/**/*.test.ts",
+            "src/test/**/*.test.ts",
             "src/*.test.ts",
           ],
         },

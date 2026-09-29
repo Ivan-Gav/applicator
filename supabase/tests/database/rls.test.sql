@@ -25,7 +25,8 @@ values
   ('00000000-0000-4000-8000-00000000000b', 'Acme', 'Bob''s application');
 
 select is(
-  (select count(*) from public.application),
+  (select count(*) from public.application
+   where user_id in ('00000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-00000000000b')),
   2::bigint,
   'service role (RLS bypass) sees both rows'
 );

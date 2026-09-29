@@ -6,6 +6,7 @@ export const routes = {
   signIn: "/sign-in",
   authCallback: "/auth/callback",
   applications: "/applications",
+  newApplication: "/applications/new",
   apiMe: "/api/me",
 } as const;
 

@@ -1,5 +1,6 @@
-import type { ApplicationStatus } from "@/domain/application/model";
+import type { ApplicationStatus, WorkMode } from "@/domain/application/model";
 import { SignInFailureReason } from "@/domain/user/model";
+import type { ApplicationFormField } from "./applications/application-form-fields";
 
 /** Every user-facing string, grouped by screen. */
 export const messages = {
@@ -32,6 +33,56 @@ export const messages = {
 
   applications: {
     title: "Applications",
+    add: "Add application",
+    empty: {
+      title: "No applications yet",
+      description:
+        "Add the first job you have applied for or are preparing to apply for, and it will show up here.",
+    },
+    columns: {
+      company: "Company",
+      position: "Position",
+      status: "Status",
+      appliedAt: "Applied",
+    },
+    notApplied: "Not recorded",
+    workMode: {
+      on_site: "On site",
+      hybrid: "Hybrid",
+      remote: "Remote",
+    } satisfies Record<WorkMode, string>,
+    form: {
+      title: "New application",
+      labels: {
+        companyName: "Company",
+        positionTitle: "Position",
+        status: "Status",
+        appliedAt: "Applied on",
+        city: "City",
+        workMode: "Work mode",
+        source: "Source",
+        applicationUrl: "Application URL",
+        notes: "Notes",
+      } satisfies Record<ApplicationFormField, string>,
+      workModeUnset: "Not specified",
+      sourceHint: "Where you found the job, such as LinkedIn or a company website.",
+      errors: {
+        companyName: "Enter the company name, up to 200 characters.",
+        positionTitle: "Enter the position title, up to 200 characters.",
+        status: "Choose a status from the list.",
+        appliedAt: "Enter a valid date.",
+        city: "Enter a city or leave the field empty.",
+        workMode: "Choose a work mode from the list.",
+        source: "Enter a source or leave the field empty.",
+        applicationUrl: "Enter a full web address starting with http:// or https://.",
+        notes: "Enter notes or leave the field empty.",
+      } satisfies Record<ApplicationFormField, string>,
+      rejected: "The application could not be saved. Check the details and try again.",
+      saveFailed: "The application could not be saved. Try again in a moment.",
+      submit: "Save application",
+      saving: "Saving…",
+      cancel: "Cancel",
+    },
     status: {
       draft: "Draft",
       applied: "Applied",

@@ -144,6 +144,40 @@ tables. Recurrence is real but rare; autocomplete over distinct existing values
 (`ApplicationRepository.distinctValues`) covers it without lookup UI, duplicate
 merging or joins on every read. Do not reintroduce lookup tables for them.
 
+### Status history
+
+`application.status` holds the current status. A trigger on `application`
+journals it into `status_event`: one row after insert, one after each update
+that changes it, inside the same transaction and carrying the row's `user_id`
+so RLS covers the journal. Code writes `status` only; it never inserts into
+`status_event` itself.
+
+**Transition rules stay in the domain.** Whether a move from one status to
+another is legal is decided by `canTransition` in
+`src/domain/application/rules.ts`. The trigger only journals what happened.
+Never move rule logic into the database.
+
+### Dates and time zones
+
+One rule for every date: it is an **instant** (`timestamptz` in the database,
+`Date` in the domain), stored in UTC and shown in the viewer's time zone.
+
+- **Input.** A day picked in a form becomes the start of that day in the
+  browser's time zone, converted in the browser (`startOfLocalDay`). The server
+  never interprets a bare `YYYY-MM-DD`; the schema accepts only a `Date`.
+- **Display.** Pages render on the server, which cannot see the browser's
+  zone. `TimeZoneSync` (in the root layout) reports it in the `tz` cookie and
+  refreshes the page when it changes; `requestTimeZone()` reads it and dates
+  are formatted with `formatDay(instant, timeZone)`. Until the cookie exists
+  (a browser's very first page), dates render in UTC.
+
+**Trade-off, accepted deliberately:** a day entered by hand is pinned to the
+zone it was entered in. "1 September" entered in Berlin is 31 August 22:00 UTC,
+and a viewer in New York sees 31 August. Moving or travelling west shifts such
+dates back by a day; travelling east never does. The alternative, a separate
+calendar-day type (Postgres `date`), would split dates into two kinds with
+different rules, while transitions record real instants anyway.
+
 ## No magic strings
 
 - **Routes and our query parameters** live in `src/app/routes.ts`. Build URLs

@@ -9,6 +9,10 @@ const optionalText = z.preprocess(blankToNull, z.string().trim().min(1).nullable
 const optionalUrl = z.preprocess(blankToNull, z.url({ protocol: /^https?$/ }).nullable());
 const optionalEmail = z.preprocess(blankToNull, z.email().nullable());
 
+// An instant. A day picked in a form becomes one in the browser, which alone
+// knows the user's time zone.
+const optionalInstant = z.date().nullable();
+
 const amount = z.int32().nonnegative().nullable().default(null);
 
 export const salaryRangeSchema = z
@@ -44,7 +48,8 @@ export const contactSchema = z.object({
 
 export const applicationStatusSchema = z.enum(applicationStatuses);
 
-// Status, appliedAt and lastContactAt change only through the transition rules.
+// Once created, status, appliedAt and lastContactAt change only through the
+// transition rules.
 const editableFields = {
   companyName: z.string().trim().min(1).max(200),
   positionTitle: z.string().trim().min(1).max(200),
@@ -64,6 +69,9 @@ const editableFields = {
 export const createApplicationSchema = z.object({
   companyName: editableFields.companyName,
   positionTitle: editableFields.positionTitle,
+  // Any status may start a record; canTransition() governs only later changes.
+  status: applicationStatusSchema.default("draft"),
+  appliedAt: optionalInstant.default(null),
   seniority: editableFields.seniority.default(null),
   city: editableFields.city.default(null),
   country: editableFields.country.default(null),
@@ -98,5 +106,18 @@ export const updateApplicationSchema = z
 
 export type CreateApplicationInput = z.input<typeof createApplicationSchema>;
 export type CreateApplication = z.output<typeof createApplicationSchema>;
+export type CreateApplicationField = keyof CreateApplicationInput;
 export type UpdateApplicationInput = z.input<typeof updateApplicationSchema>;
 export type UpdateApplication = z.output<typeof updateApplicationSchema>;
+
+/** Returned by the create action in place of a redirect when the input is rejected. */
+export type CreateApplicationRejection = { invalidFields: CreateApplicationField[] };
+
+/** The top-level fields a failed parse of the create input complained about, each once. */
+export function invalidCreateFields(error: z.ZodError): CreateApplicationField[] {
+  const fields = error.issues.map((issue) => issue.path[0]);
+  const known = new Set<PropertyKey>(Object.keys(createApplicationSchema.shape));
+  return [...new Set(fields)].filter(
+    (field): field is CreateApplicationField => field !== undefined && known.has(field),
+  );
+}

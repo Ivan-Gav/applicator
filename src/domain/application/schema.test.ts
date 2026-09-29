@@ -3,6 +3,7 @@ import {
   applicationStatusSchema,
   contactSchema,
   createApplicationSchema,
+  invalidCreateFields,
   salaryRangeSchema,
   updateApplicationSchema,
 } from "./schema";
@@ -99,6 +100,8 @@ describe("createApplicationSchema", () => {
     expect(createApplicationSchema.parse(required)).toEqual({
       companyName: "Acme",
       positionTitle: "Engineer",
+      status: "draft",
+      appliedAt: null,
       seniority: null,
       city: null,
       country: null,
@@ -260,19 +263,60 @@ describe("createApplicationSchema", () => {
     expect(issuesAt(result)).toEqual(["contact.email", "contact.url"]);
   });
 
-  it("does not accept status or transition timestamps", () => {
+  it.each([
+    "draft",
+    "applied",
+    "screening",
+    "interview",
+    "offer",
+    "rejected",
+    "withdrawn",
+  ] as const)("accepts %s as the starting status", (status) => {
+    expect(createApplicationSchema.parse({ ...required, status }).status).toBe(status);
+  });
+
+  it("rejects a starting status outside the allowed set", () => {
+    expect(issuesAt(createApplicationSchema.safeParse({ ...required, status: "ghosted" }))).toEqual(
+      ["status"],
+    );
+  });
+
+  it("accepts the applied date as an instant", () => {
+    const appliedAt = new Date("2026-08-31T22:00:00.000Z");
+
+    expect(createApplicationSchema.parse({ ...required, appliedAt }).appliedAt).toEqual(appliedAt);
+  });
+
+  it("treats a missing applied date as unknown", () => {
+    expect(createApplicationSchema.parse({ ...required, appliedAt: null }).appliedAt).toBeNull();
+    expect(createApplicationSchema.parse(required).appliedAt).toBeNull();
+  });
+
+  it.each(["2026-09-01", "", "yesterday", new Date("not a date")])(
+    "rejects the applied date %j, which is not an instant",
+    (appliedAt) => {
+      expect(issuesAt(createApplicationSchema.safeParse({ ...required, appliedAt }))).toEqual([
+        "appliedAt",
+      ]);
+    },
+  );
+
+  it("does not accept the timestamps only transitions and archiving set", () => {
     const parsed = createApplicationSchema.parse({
       ...required,
-      status: "offer",
-      appliedAt: new Date(),
       lastContactAt: new Date(),
       archivedAt: new Date(),
     });
 
-    expect(parsed).not.toHaveProperty("status");
-    expect(parsed).not.toHaveProperty("appliedAt");
     expect(parsed).not.toHaveProperty("lastContactAt");
     expect(parsed).not.toHaveProperty("archivedAt");
+  });
+
+  it("drops fields it does not know, such as an owner", () => {
+    const parsed = createApplicationSchema.parse({ ...required, userId: "someone", user_id: "x" });
+
+    expect(parsed).not.toHaveProperty("userId");
+    expect(parsed).not.toHaveProperty("user_id");
   });
 });
 
@@ -343,5 +387,32 @@ describe("updateApplicationSchema", () => {
     const parsed = updateApplicationSchema.parse({ positionTitle: "E", status: "offer" });
 
     expect(parsed).not.toHaveProperty("status");
+  });
+});
+
+describe("invalidCreateFields", () => {
+  function fieldsOf(input: unknown) {
+    const result = createApplicationSchema.safeParse(input);
+    if (result.success) {
+      throw new Error("expected the input to be rejected");
+    }
+    return invalidCreateFields(result.error);
+  }
+
+  it("names each rejected top-level field", () => {
+    expect(fieldsOf({ positionTitle: "Engineer", applicationUrl: "nope" })).toEqual([
+      "companyName",
+      "applicationUrl",
+    ]);
+  });
+
+  it("names a nested block once, however many of its parts failed", () => {
+    expect(
+      fieldsOf({ ...required, contact: { email: "not-an-email", url: "ftp://example.com" } }),
+    ).toEqual(["contact"]);
+  });
+
+  it("names nothing for a failure outside any field", () => {
+    expect(fieldsOf("not an object")).toEqual([]);
   });
 });
