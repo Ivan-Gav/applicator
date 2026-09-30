@@ -1,6 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { salaryAmounts } from "@/domain/application/model";
 import type { CreateApplication, CreateApplicationRejection } from "@/domain/application/schema";
 import { messages } from "@/ui/messages";
 import { ApplicationForm } from "./ApplicationForm";
@@ -101,7 +102,8 @@ describe("ApplicationForm", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent(t.errors.applicationUrl);
     expect(textbox(t.labels.applicationUrl)).toHaveAccessibleDescription(t.errors.applicationUrl);
-    expect(submitButton()).toBeEnabled();
+    // The error shows before the pending save settles; wait for the button.
+    expect(await screen.findByRole("button", { name: t.submit })).toBeEnabled();
   });
 
   it("says so when the server rejects a field the form does not show", async () => {
@@ -122,7 +124,8 @@ describe("ApplicationForm", () => {
     const alert = await screen.findByRole("alert");
     expect(within(alert).getByText(t.saveFailed)).toBeVisible();
     expect(textbox(t.labels.companyName)).toHaveValue("Acme");
-    expect(submitButton()).toBeEnabled();
+    // The error shows before the pending save settles; wait for the button.
+    expect(await screen.findByRole("button", { name: t.submit })).toBeEnabled();
   });
 
   it("disables submitting while the save is pending", async () => {
@@ -135,5 +138,134 @@ describe("ApplicationForm", () => {
     expect(pending).toBeDisabled();
     await user.click(pending);
     expect(createApplication).toHaveBeenCalledOnce();
+  });
+});
+
+describe("ApplicationForm salary", () => {
+  const s = t.salary;
+
+  async function openSalary(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByText(s.title));
+  }
+
+  it("keeps the salary section closed until asked for", async () => {
+    const { user } = renderForm();
+
+    expect(textbox(s.amounts.advertised.from)).not.toBeVisible();
+
+    await openSalary(user);
+
+    expect(textbox(s.amounts.advertised.from)).toBeVisible();
+  });
+
+  it("gives every input of the form a distinct accessible name", () => {
+    renderForm();
+    const names = [
+      ...applicationFormFields.map((field) => t.labels[field]),
+      ...salaryAmounts.flatMap((amount) => [s.amounts[amount].from, s.amounts[amount].to]),
+      s.currency,
+      s.period,
+    ];
+
+    // getByLabelText throws when a name matches more than one control.
+    for (const name of names) {
+      expect(screen.getByLabelText(name)).toBeInTheDocument();
+    }
+    expect(new Set(names).size).toBe(names.length);
+  });
+
+  it("sends a single figure, a range and an open end in the encoding the schema defines", async () => {
+    const { createApplication, user } = renderForm();
+
+    await fillRequired(user);
+    await openSalary(user);
+    await user.type(textbox(s.amounts.advertised.from), "60000");
+    await user.type(textbox(s.amounts.advertised.to), "70000");
+    await user.type(textbox(s.amounts.asked.from), "72000");
+    await user.type(textbox(s.amounts.asked.to), "72000");
+    await user.type(textbox(s.amounts.estimated.from), "75000");
+    await user.clear(textbox(s.currency));
+    await user.type(textbox(s.currency), "chf");
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: s.period }),
+      messages.applications.salary.period.year,
+    );
+    await user.click(submitButton());
+
+    await vi.waitFor(() => expect(createApplication).toHaveBeenCalledOnce());
+    expect(createApplication.mock.calls[0]?.[0].salary).toEqual({
+      advertised: { min: 60_000, max: 70_000 },
+      estimated: { min: 75_000, max: null },
+      asked: { min: 72_000, max: 72_000 },
+      currency: "CHF",
+      period: "year",
+    });
+  });
+
+  it("sends every amount as unknown when the section is left alone", async () => {
+    const { createApplication, user } = renderForm();
+
+    await fillRequired(user);
+    await user.click(submitButton());
+
+    await vi.waitFor(() => expect(createApplication).toHaveBeenCalledOnce());
+    expect(createApplication.mock.calls[0]?.[0].salary).toEqual({
+      advertised: { min: null, max: null },
+      estimated: { min: null, max: null },
+      asked: { min: null, max: null },
+      currency: "EUR",
+      period: null,
+    });
+  });
+
+  it.each([
+    ["a minimum above the maximum", "80000", "70000"],
+    ["a figure with separators", "60,000", ""],
+    ["a fractional figure", "60000.5", ""],
+  ])("pins %s to that amount alone", async (_, from, to) => {
+    const { createApplication, user } = renderForm();
+
+    await fillRequired(user);
+    await openSalary(user);
+    await user.type(textbox(s.amounts.asked.from), from);
+    if (to) {
+      await user.type(textbox(s.amounts.asked.to), to);
+    }
+    await user.click(submitButton());
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(s.errors.amount);
+    expect(textbox(s.amounts.asked.from)).toBeInvalid();
+    expect(textbox(s.amounts.asked.from)).toHaveAccessibleDescription(
+      expect.stringContaining(s.errors.amount),
+    );
+    expect(textbox(s.amounts.advertised.from)).toBeValid();
+    expect(textbox(s.amounts.estimated.from)).toBeValid();
+    expect(createApplication).not.toHaveBeenCalled();
+  });
+
+  it("refuses a currency that is not three letters", async () => {
+    const { createApplication, user } = renderForm();
+
+    await fillRequired(user);
+    await openSalary(user);
+    await user.clear(textbox(s.currency));
+    await user.type(textbox(s.currency), "E1");
+    await user.click(submitButton());
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(s.errors.currency);
+    expect(textbox(s.currency)).toBeInvalid();
+    expect(createApplication).not.toHaveBeenCalled();
+  });
+
+  it("opens the closed section to show an amount the server rejected", async () => {
+    const { user } = renderForm(() => Promise.resolve({ invalidFields: ["salary.estimated"] }));
+
+    await fillRequired(user);
+    await user.click(submitButton());
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(s.errors.amount);
+    expect(textbox(s.amounts.estimated.from)).toBeVisible();
+    expect(textbox(s.amounts.estimated.from)).toBeInvalid();
+    expect(textbox(s.amounts.advertised.from)).toBeValid();
   });
 });

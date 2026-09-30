@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { unstable_rethrow } from "next/navigation";
 import { useState, useTransition } from "react";
+import { flushSync } from "react-dom";
 import { useForm } from "react-hook-form";
 import { applicationStatuses, workModes } from "@/domain/application/model";
 import {
@@ -20,7 +21,12 @@ import { Input } from "@/ui/kit/input";
 import { NativeSelect, NativeSelectOption } from "@/ui/kit/native-select";
 import { Textarea } from "@/ui/kit/textarea";
 import { messages } from "@/ui/messages";
-import { type ApplicationFormField, isApplicationFormField } from "./application-form-fields";
+import { SalaryFields } from "./SalaryFields";
+import {
+  type ApplicationFormField,
+  isApplicationFormField,
+  isSalaryFormField,
+} from "./application-form-fields";
 
 export type ApplicationFormProps = {
   // Navigates away on success; resolves only with a rejection.
@@ -53,13 +59,25 @@ export function ApplicationForm({ createApplication, cancelHref }: ApplicationFo
       source: "",
       applicationUrl: "",
       notes: "",
+      salary: {
+        advertised: { min: null, max: null },
+        estimated: { min: null, max: null },
+        asked: { min: null, max: null },
+        currency: "EUR",
+        period: null,
+      },
     },
   });
+  const [salaryOpen, setSalaryOpen] = useState(false);
   const { errors, isSubmitting } = form.formState;
   const pending = saving || isSubmitting;
+  const salaryShown = salaryOpen || errors.salary !== undefined;
 
   function showRejection({ invalidFields }: CreateApplicationRejection) {
-    const shown = invalidFields.filter(isApplicationFormField);
+    const shown = [
+      ...invalidFields.filter(isApplicationFormField),
+      ...invalidFields.filter(isSalaryFormField),
+    ];
     for (const field of shown) {
       form.setError(field, { type: "server" });
     }
@@ -68,20 +86,29 @@ export function ApplicationForm({ createApplication, cancelHref }: ApplicationFo
     }
   }
 
-  const submit = form.handleSubmit((values) => {
-    setFailure(null);
-    startSaving(async () => {
-      try {
-        showRejection(await createApplication(values));
-      } catch (error) {
-        // A successful save redirects, and Next.js delivers that redirect here
-        // as a thrown error.
-        // unstable_rethrow hands these back to Next.js; only real failures pass.
-        unstable_rethrow(error);
-        setFailure(t.saveFailed);
+  const submit = form.handleSubmit(
+    (values) => {
+      setFailure(null);
+      startSaving(async () => {
+        try {
+          showRejection(await createApplication(values));
+        } catch (error) {
+          // A successful save redirects, and Next.js delivers that redirect here
+          // as a thrown error.
+          // unstable_rethrow hands these back to Next.js; only real failures pass.
+          unstable_rethrow(error);
+          setFailure(t.saveFailed);
+        }
+      });
+    },
+    (invalid) => {
+      // Open before react-hook-form moves focus to the first error, which it
+      // cannot do inside a closed <details>.
+      if (invalid.salary) {
+        flushSync(() => setSalaryOpen(true));
       }
-    });
-  });
+    },
+  );
 
   function describedBy(field: ApplicationFormField, hintId?: string) {
     const ids = [errors[field] ? `${field}-error` : undefined, hintId].filter(Boolean);
@@ -212,6 +239,13 @@ export function ApplicationForm({ createApplication, cancelHref }: ApplicationFo
         <Textarea id="notes" rows={4} {...describedBy("notes")} {...form.register("notes")} />
         {error("notes")}
       </Field>
+
+      <SalaryFields
+        register={form.register}
+        errors={errors.salary}
+        open={salaryShown}
+        onOpenChange={setSalaryOpen}
+      />
 
       {failure && (
         <Alert variant="destructive">

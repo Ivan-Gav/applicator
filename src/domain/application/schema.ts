@@ -22,9 +22,9 @@ export const salaryRangeSchema = z
   });
 
 export const salarySchema = z.object({
-  posted: salaryRangeSchema.default({ min: null, max: null }),
+  advertised: salaryRangeSchema.default({ min: null, max: null }),
+  estimated: salaryRangeSchema.default({ min: null, max: null }),
   asked: salaryRangeSchema.default({ min: null, max: null }),
-  target: salaryRangeSchema.default({ min: null, max: null }),
   currency: z.preprocess(
     blankToNull,
     z
@@ -81,9 +81,9 @@ export const createApplicationSchema = z.object({
   sourceUrl: editableFields.sourceUrl.default(null),
   applicationUrl: editableFields.applicationUrl.default(null),
   salary: editableFields.salary.default({
-    posted: { min: null, max: null },
+    advertised: { min: null, max: null },
+    estimated: { min: null, max: null },
     asked: { min: null, max: null },
-    target: { min: null, max: null },
     currency: "EUR",
     period: null,
   }),
@@ -106,18 +106,32 @@ export const updateApplicationSchema = z
 
 export type CreateApplicationInput = z.input<typeof createApplicationSchema>;
 export type CreateApplication = z.output<typeof createApplicationSchema>;
-export type CreateApplicationField = keyof CreateApplicationInput;
 export type UpdateApplicationInput = z.input<typeof updateApplicationSchema>;
 export type UpdateApplication = z.output<typeof updateApplicationSchema>;
+
+type SalaryPart = keyof z.output<typeof salarySchema>;
+
+/**
+ * A field the create input can be rejected on: a top-level field, or one part
+ * of the salary block, so that a failure names the amount it concerns.
+ */
+export type CreateApplicationField = keyof CreateApplicationInput | `salary.${SalaryPart}`;
 
 /** Returned by the create action in place of a redirect when the input is rejected. */
 export type CreateApplicationRejection = { invalidFields: CreateApplicationField[] };
 
-/** The top-level fields a failed parse of the create input complained about, each once. */
+const topLevelFields = new Set<PropertyKey>(Object.keys(createApplicationSchema.shape));
+const salaryParts = new Set<PropertyKey>(Object.keys(salarySchema.shape));
+
+function fieldOf([top, part]: readonly PropertyKey[]): CreateApplicationField | null {
+  if (top === "salary" && salaryParts.has(part as PropertyKey)) {
+    return `salary.${part as SalaryPart}`;
+  }
+  return topLevelFields.has(top as PropertyKey) ? (top as keyof CreateApplicationInput) : null;
+}
+
+/** The fields a failed parse of the create input complained about, each once. */
 export function invalidCreateFields(error: z.ZodError): CreateApplicationField[] {
-  const fields = error.issues.map((issue) => issue.path[0]);
-  const known = new Set<PropertyKey>(Object.keys(createApplicationSchema.shape));
-  return [...new Set(fields)].filter(
-    (field): field is CreateApplicationField => field !== undefined && known.has(field),
-  );
+  const fields = error.issues.map((issue) => fieldOf(issue.path));
+  return [...new Set(fields)].filter((field) => field !== null);
 }

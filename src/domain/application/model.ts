@@ -34,10 +34,33 @@ export type SalaryRange = {
   max: number | null;
 };
 
+// How a SalaryRange reads under the encoding above.
+export const SalaryRangeKind = {
+  Unknown: "unknown",
+  Exact: "exact",
+  Between: "between",
+  From: "from",
+  UpTo: "up_to",
+} as const;
+export type SalaryRangeKind = (typeof SalaryRangeKind)[keyof typeof SalaryRangeKind];
+
+export type SalaryRangeShape =
+  | { kind: typeof SalaryRangeKind.Unknown }
+  | { kind: typeof SalaryRangeKind.Exact; amount: number }
+  | { kind: typeof SalaryRangeKind.Between; min: number; max: number }
+  | { kind: typeof SalaryRangeKind.From; min: number }
+  | { kind: typeof SalaryRangeKind.UpTo; max: number };
+
+export const salaryAmounts = ["advertised", "estimated", "asked"] as const;
+export type SalaryAmount = (typeof salaryAmounts)[number];
+
 export type Salary = {
-  posted: SalaryRange;
+  /** What the employer stated in the vacancy. */
+  advertised: SalaryRange;
+  /** An estimate for the role, from AI tools or experts. */
+  estimated: SalaryRange;
+  /** What was stated in the application. */
   asked: SalaryRange;
-  target: SalaryRange;
   currency: string | null;
   period: SalaryPeriod | null;
 };

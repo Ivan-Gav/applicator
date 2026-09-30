@@ -59,6 +59,14 @@ describe("salaryRangeSchema", () => {
   it("rejects amounts beyond a 32-bit integer", () => {
     expect(salaryRangeSchema.safeParse({ max: 2_147_483_648 }).success).toBe(false);
   });
+
+  // The same edges supabase/tests/database/salary_checks.test.sql pins.
+  it("accepts zero and the largest 32-bit integer, as the database does", () => {
+    expect(salaryRangeSchema.parse({ min: 0, max: 2_147_483_647 })).toEqual({
+      min: 0,
+      max: 2_147_483_647,
+    });
+  });
 });
 
 describe("contactSchema", () => {
@@ -111,9 +119,9 @@ describe("createApplicationSchema", () => {
       sourceUrl: null,
       applicationUrl: null,
       salary: {
-        posted: { min: null, max: null },
+        advertised: { min: null, max: null },
+        estimated: { min: null, max: null },
         asked: { min: null, max: null },
-        target: { min: null, max: null },
         currency: "EUR",
         period: null,
       },
@@ -228,6 +236,9 @@ describe("createApplicationSchema", () => {
     expect(
       issuesAt(createApplicationSchema.safeParse({ ...required, salary: { currency: "EURO" } })),
     ).toEqual(["salary.currency"]);
+    expect(
+      issuesAt(createApplicationSchema.safeParse({ ...required, salary: { currency: "€€€" } })),
+    ).toEqual(["salary.currency"]);
   });
 
   it("allows an unknown currency", () => {
@@ -243,15 +254,15 @@ describe("createApplicationSchema", () => {
     const result = createApplicationSchema.safeParse({
       ...required,
       salary: {
-        posted: { min: 50_000, max: 60_000 },
+        advertised: { min: 50_000, max: 60_000 },
+        estimated: { min: 90_000, max: 80_000 },
         asked: { min: 70_000, max: 65_000 },
-        target: { min: 90_000, max: 80_000 },
         currency: "EUR",
         period: "year",
       },
     });
 
-    expect(issuesAt(result)).toEqual(["salary.asked.min", "salary.target.min"]);
+    expect(issuesAt(result)).toEqual(["salary.estimated.min", "salary.asked.min"]);
   });
 
   it("reports contact problems under their own path", () => {
@@ -357,13 +368,13 @@ describe("updateApplicationSchema", () => {
 
   it("replaces the salary block as a whole", () => {
     const parsed = updateApplicationSchema.parse({
-      salary: { posted: { min: 55_000 }, currency: "eur", period: "year" },
+      salary: { advertised: { min: 55_000 }, currency: "eur", period: "year" },
     });
 
     expect(parsed.salary).toEqual({
-      posted: { min: 55_000, max: null },
+      advertised: { min: 55_000, max: null },
+      estimated: { min: null, max: null },
       asked: { min: null, max: null },
-      target: { min: null, max: null },
       currency: "EUR",
       period: "year",
     });
@@ -410,6 +421,23 @@ describe("invalidCreateFields", () => {
     expect(
       fieldsOf({ ...required, contact: { email: "not-an-email", url: "ftp://example.com" } }),
     ).toEqual(["contact"]);
+  });
+
+  it("names the salary part a failure concerns, each once", () => {
+    expect(
+      fieldsOf({
+        ...required,
+        salary: {
+          advertised: { min: 80_000, max: 70_000 },
+          estimated: { min: -1, max: 1.5 },
+          currency: "€",
+        },
+      }),
+    ).toEqual(["salary.advertised", "salary.estimated", "salary.currency"]);
+  });
+
+  it("names the whole salary block when it is not a block at all", () => {
+    expect(fieldsOf({ ...required, salary: "a lot" })).toEqual(["salary"]);
   });
 
   it("names nothing for a failure outside any field", () => {

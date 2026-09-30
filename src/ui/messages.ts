@@ -1,4 +1,10 @@
-import type { ApplicationStatus, WorkMode } from "@/domain/application/model";
+import type {
+  ApplicationStatus,
+  SalaryAmount,
+  SalaryPeriod,
+  SalaryRangeKind,
+  WorkMode,
+} from "@/domain/application/model";
 import { SignInFailureReason } from "@/domain/user/model";
 import type { ApplicationFormField } from "./applications/application-form-fields";
 
@@ -44,8 +50,27 @@ export const messages = {
       position: "Position",
       status: "Status",
       appliedAt: "Applied",
+      salary: "Advertised salary",
     },
     notApplied: "Not recorded",
+    salary: {
+      range: {
+        unknown: () => "Not stated",
+        exact: ({ amount }: { amount: string }) => amount,
+        between: ({ min, max }: { min: string; max: string }) => `${min}–${max}`,
+        from: ({ min }: { min: string }) => `from ${min}`,
+        up_to: ({ max }: { max: string }) => `up to ${max}`,
+      } satisfies Record<SalaryRangeKind, unknown>,
+      period: {
+        year: "per year",
+        month: "per month",
+        day: "per day",
+        hour: "per hour",
+      } satisfies Record<SalaryPeriod, string>,
+      // "60,000–70,000 EUR per year"; either unit may be missing.
+      amount: (range: string, currency: string | null, period: string | null) =>
+        [range, currency, period].filter(Boolean).join(" "),
+    },
     workMode: {
       on_site: "On site",
       hybrid: "Hybrid",
@@ -77,6 +102,23 @@ export const messages = {
         applicationUrl: "Enter a full web address starting with http:// or https://.",
         notes: "Enter notes or leave the field empty.",
       } satisfies Record<ApplicationFormField, string>,
+      salary: {
+        title: "Salary",
+        hint: "Optional. Whole numbers without separators. For a single figure, enter it in both boxes; for “from” or “up to”, fill in one box only.",
+        amounts: {
+          advertised: { from: "Advertised: from", to: "Advertised: to" },
+          estimated: { from: "Estimated: from", to: "Estimated: to" },
+          asked: { from: "Asked: from", to: "Asked: to" },
+        } satisfies Record<SalaryAmount, { from: string; to: string }>,
+        currency: "Currency",
+        period: "Period",
+        periodUnset: "Not specified",
+        errors: {
+          amount: "Enter whole numbers without separators, the first no higher than the second.",
+          currency: "Enter a three-letter currency code, such as EUR.",
+          period: "Choose a period from the list.",
+        },
+      },
       rejected: "The application could not be saved. Check the details and try again.",
       saveFailed: "The application could not be saved. Try again in a moment.",
       submit: "Save application",

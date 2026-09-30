@@ -4,6 +4,7 @@ import type { Application } from "@/domain/application/model";
 import { formatDay } from "@/lib/date";
 import { messages } from "@/ui/messages";
 import { ApplicationList } from "./ApplicationList";
+import { salaryText } from "./salary-text";
 
 const t = messages.applications;
 // Midnight in Berlin on 1 September; still 31 August in UTC.
@@ -27,9 +28,9 @@ function application(overrides: Partial<Application>): Application {
     appliedAt: null,
     lastContactAt: null,
     salary: {
-      posted: { min: null, max: null },
+      advertised: { min: null, max: null },
+      estimated: { min: null, max: null },
       asked: { min: null, max: null },
-      target: { min: null, max: null },
       currency: null,
       period: null,
     },
@@ -50,7 +51,7 @@ describe("ApplicationList", () => {
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
 
-  it("shows company, position, status and the applied day in the viewer's zone", () => {
+  it("shows company, position, status, the applied day in the viewer's zone and the advertised salary", () => {
     render(
       <ApplicationList
         addHref="/new"
@@ -62,6 +63,13 @@ describe("ApplicationList", () => {
             positionTitle: "Platform Engineer",
             status: "interview",
             appliedAt,
+            salary: {
+              advertised: { min: 60_000, max: 70_000 },
+              estimated: { min: null, max: null },
+              asked: { min: null, max: null },
+              currency: "EUR",
+              period: "year",
+            },
           }),
           application({ companyName: "Acme", positionTitle: "Backend Engineer" }),
         ]}
@@ -78,7 +86,13 @@ describe("ApplicationList", () => {
       within(newest)
         .getAllByRole("cell")
         .map((cell) => cell.textContent),
-    ).toEqual(["Globex", "Platform Engineer", t.status.interview, formatDay(appliedAt, timeZone)]);
+    ).toEqual([
+      "Globex",
+      "Platform Engineer",
+      t.status.interview,
+      formatDay(appliedAt, timeZone),
+      salaryText({ min: 60_000, max: 70_000 }, { currency: "EUR", period: "year" }),
+    ]);
     expect(within(newest).getByRole("status", { name: t.status.interview })).toBeVisible();
     expect(within(newest).getByText(formatDay(appliedAt, timeZone))).toHaveAttribute(
       "datetime",
@@ -89,7 +103,7 @@ describe("ApplicationList", () => {
       within(oldest)
         .getAllByRole("cell")
         .map((cell) => cell.textContent),
-    ).toEqual(["Acme", "Backend Engineer", t.status.draft, t.notApplied]);
+    ).toEqual(["Acme", "Backend Engineer", t.status.draft, t.notApplied, t.salary.range.unknown()]);
     expect(screen.getByRole("link", { name: t.add })).toHaveAttribute("href", "/new");
   });
 });

@@ -1,4 +1,10 @@
-import type { Application, ApplicationStatus } from "./model";
+import {
+  type Application,
+  type ApplicationStatus,
+  type SalaryRange,
+  SalaryRangeKind,
+  type SalaryRangeShape,
+} from "./model";
 
 const allowedTransitions: Readonly<Record<ApplicationStatus, readonly ApplicationStatus[]>> = {
   draft: ["applied", "withdrawn"],
@@ -67,4 +73,16 @@ export function daysWithoutResponse(application: Application, now: Date): number
 
 function hasAllowedTransitions(status: ApplicationStatus): boolean {
   return allowedTransitions[status].length > 0;
+}
+
+export function salaryRangeShape({ min, max }: SalaryRange): SalaryRangeShape {
+  if (min === null) {
+    return max === null ? { kind: SalaryRangeKind.Unknown } : { kind: SalaryRangeKind.UpTo, max };
+  }
+  if (max === null) {
+    return { kind: SalaryRangeKind.From, min };
+  }
+  return min === max
+    ? { kind: SalaryRangeKind.Exact, amount: min }
+    : { kind: SalaryRangeKind.Between, min, max };
 }

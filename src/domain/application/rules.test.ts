@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
-import type { Application, ApplicationStatus } from "./model";
-import { IllegalTransitionError, canTransition, daysWithoutResponse, transition } from "./rules";
+import { type Application, type ApplicationStatus, SalaryRangeKind } from "./model";
+import {
+  IllegalTransitionError,
+  canTransition,
+  daysWithoutResponse,
+  salaryRangeShape,
+  transition,
+} from "./rules";
 
 const allStatuses: readonly ApplicationStatus[] = [
   "draft",
@@ -63,9 +69,9 @@ function anApplication(overrides: Partial<Application> = {}): Application {
     appliedAt: new Date("2026-03-01T09:00:00Z"),
     lastContactAt: null,
     salary: {
-      posted: { min: null, max: null },
+      advertised: { min: null, max: null },
+      estimated: { min: null, max: null },
       asked: { min: null, max: null },
-      target: { min: null, max: null },
       currency: "EUR",
       period: null,
     },
@@ -204,5 +210,33 @@ describe("daysWithoutResponse", () => {
     });
 
     expect(daysWithoutResponse(application, now)).toBeNull();
+  });
+});
+
+describe("salaryRangeShape", () => {
+  it.each([
+    [{ min: null, max: null }, { kind: SalaryRangeKind.Unknown }],
+    [
+      { min: 70_000, max: 70_000 },
+      { kind: SalaryRangeKind.Exact, amount: 70_000 },
+    ],
+    [
+      { min: 60_000, max: 70_000 },
+      { kind: SalaryRangeKind.Between, min: 60_000, max: 70_000 },
+    ],
+    [
+      { min: 60_000, max: null },
+      { kind: SalaryRangeKind.From, min: 60_000 },
+    ],
+    [
+      { min: null, max: 80_000 },
+      { kind: SalaryRangeKind.UpTo, max: 80_000 },
+    ],
+    [
+      { min: 0, max: 0 },
+      { kind: SalaryRangeKind.Exact, amount: 0 },
+    ],
+  ])("reads %j as %j", (range, shape) => {
+    expect(salaryRangeShape(range)).toEqual(shape);
   });
 });

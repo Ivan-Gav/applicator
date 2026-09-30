@@ -5,6 +5,7 @@ import { Button } from "@/ui/kit/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/ui/kit/table";
 import { messages } from "@/ui/messages";
 import { StatusBadge } from "./StatusBadge";
+import { salaryText } from "./salary-text";
 
 export type ApplicationListProps = {
   applications: readonly Application[];
@@ -44,6 +45,7 @@ export function ApplicationList({ applications, addHref, timeZone }: Application
             <TableHead scope="col">{t.columns.position}</TableHead>
             <TableHead scope="col">{t.columns.status}</TableHead>
             <TableHead scope="col">{t.columns.appliedAt}</TableHead>
+            <TableHead scope="col">{t.columns.salary}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -63,6 +65,7 @@ export function ApplicationList({ applications, addHref, timeZone }: Application
                   <span className="text-muted-foreground">{t.notApplied}</span>
                 )}
               </TableCell>
+              <TableCell>{salaryText(application.salary.advertised, application.salary)}</TableCell>
             </TableRow>
           ))}
         </TableBody>
