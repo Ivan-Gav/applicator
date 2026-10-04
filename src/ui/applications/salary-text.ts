@@ -6,7 +6,7 @@ const t = messages.applications.salary;
 const amountFormat = new Intl.NumberFormat("en-GB");
 
 function withUnits(range: string, { currency, period }: Pick<Salary, "currency" | "period">) {
-  return t.amount(range, currency, period === null ? null : t.period[period]);
+  return t.amount(range, currency, t.period[period]);
 }
 
 /** One salary amount as a phrase, e.g. "60,000–70,000 EUR per year". */

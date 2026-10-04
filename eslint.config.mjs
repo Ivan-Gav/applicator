@@ -35,6 +35,13 @@ const domainMustNotDependOnAdapters = {
     "Depend on a repository interface from src/domain/ instead; adapters implement it.",
 };
 
+const uiMustNotDependOnApp = {
+  group: ["@/app", "@/app/**", "**/app/**"],
+  message:
+    "UI components must not depend on routing or server actions. " +
+    "Take routes and actions as props from the page in src/app/ instead.",
+};
+
 export default defineConfig([
   globalIgnores([
     ".next/**",
@@ -90,6 +97,23 @@ export default defineConfig([
         "error",
         {
           patterns: [supabaseOnlyInAdapters, domainMustNotDependOnAdapters, serviceRoleOnlyInE2e],
+        },
+      ],
+    },
+  },
+  {
+    name: "architecture/ui-is-app-free",
+    files: ["src/ui/**"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            supabaseOnlyInAdapters,
+            storageTypesOnlyInAdapters,
+            serviceRoleOnlyInE2e,
+            uiMustNotDependOnApp,
+          ],
         },
       ],
     },

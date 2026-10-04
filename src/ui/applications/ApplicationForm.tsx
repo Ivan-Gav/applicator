@@ -6,11 +6,18 @@ import { unstable_rethrow } from "next/navigation";
 import { useState, useTransition } from "react";
 import { flushSync } from "react-dom";
 import { useForm } from "react-hook-form";
-import { applicationStatuses, workModes } from "@/domain/application/model";
+import { toast } from "sonner";
 import {
+  type Application,
+  applicationStatuses,
+  channels,
+  seniorities,
+  workModes,
+} from "@/domain/application/model";
+import {
+  type ApplicationRejection,
   type CreateApplication,
   type CreateApplicationInput,
-  type CreateApplicationRejection,
   createApplicationSchema,
 } from "@/domain/application/schema";
 import { startOfLocalDay } from "@/lib/date";
@@ -19,19 +26,27 @@ import { Button } from "@/ui/kit/button";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/ui/kit/field";
 import { Input } from "@/ui/kit/input";
 import { NativeSelect, NativeSelectOption } from "@/ui/kit/native-select";
+import { awaitingHydrationClass, useHydrated } from "@/ui/hooks/use-hydrated";
 import { Textarea } from "@/ui/kit/textarea";
 import { messages } from "@/ui/messages";
+import { ContactFields } from "./ContactFields";
 import { SalaryFields } from "./SalaryFields";
 import {
   type ApplicationFormField,
   isApplicationFormField,
   isSalaryFormField,
 } from "./application-form-fields";
+import { applicationFormValues, hasContact, hasSalary } from "./application-form-values";
 
 export type ApplicationFormProps = {
-  // Navigates away on success; resolves only with a rejection.
-  createApplication: (input: CreateApplication) => Promise<CreateApplicationRejection>;
-  cancelHref: string;
+  /**
+   * Stores the input. Resolves with the rejected fields, none once an edit is
+   * saved; a new application navigates away instead.
+   */
+  save: (input: CreateApplication) => Promise<ApplicationRejection>;
+  backHref: string;
+  /** The application to edit; without it the form creates a new one. */
+  application?: Application;
 };
 
 const t = messages.applications.form;
@@ -44,36 +59,27 @@ const blankAsNull = (value: unknown) => (value === "" ? null : value);
 const dayAsInstant = (value: unknown) =>
   value === "" ? null : typeof value === "string" ? (startOfLocalDay(value) ?? value) : value;
 
-export function ApplicationForm({ createApplication, cancelHref }: ApplicationFormProps) {
+export function ApplicationForm({ save, backHref, application }: ApplicationFormProps) {
+  const editing = application !== undefined;
   const [failure, setFailure] = useState<string | null>(null);
   const [saving, startSaving] = useTransition();
+  const hydrated = useHydrated();
   const form = useForm<CreateApplicationInput, unknown, CreateApplication>({
     resolver: zodResolver(createApplicationSchema),
-    defaultValues: {
-      companyName: "",
-      positionTitle: "",
-      status: "draft",
-      appliedAt: null,
-      city: "",
-      workMode: null,
-      source: "",
-      applicationUrl: "",
-      notes: "",
-      salary: {
-        advertised: { min: null, max: null },
-        estimated: { min: null, max: null },
-        asked: { min: null, max: null },
-        currency: "EUR",
-        period: null,
-      },
-    },
+    defaultValues: applicationFormValues(application),
   });
-  const [salaryOpen, setSalaryOpen] = useState(false);
-  const { errors, isSubmitting } = form.formState;
+  const [salaryOpen, setSalaryOpen] = useState(application ? hasSalary(application.salary) : false);
+  const [contactOpen, setContactOpen] = useState(
+    application ? hasContact(application.contact) : false,
+  );
+  const { errors, isSubmitting, isDirty } = form.formState;
   const pending = saving || isSubmitting;
+  // An edit with nothing changed has nothing to save.
+  const unchanged = editing && !isDirty;
   const salaryShown = salaryOpen || errors.salary !== undefined;
+  const contactShown = contactOpen || errors.contact !== undefined;
 
-  function showRejection({ invalidFields }: CreateApplicationRejection) {
+  function showRejection({ invalidFields }: ApplicationRejection) {
     const shown = [
       ...invalidFields.filter(isApplicationFormField),
       ...invalidFields.filter(isSalaryFormField),
@@ -89,12 +95,19 @@ export function ApplicationForm({ createApplication, cancelHref }: ApplicationFo
   const submit = form.handleSubmit(
     (values) => {
       setFailure(null);
+      const submitted = form.getValues();
       startSaving(async () => {
         try {
-          showRejection(await createApplication(values));
+          const rejection = await save(values);
+          showRejection(rejection);
+          if (editing && rejection.invalidFields.length === 0) {
+            // What was saved becomes the baseline; edits typed meanwhile stay.
+            form.reset(submitted, { keepValues: true });
+            toast.success(t.saved);
+          }
         } catch (error) {
-          // A successful save redirects, and Next.js delivers that redirect here
-          // as a thrown error.
+          // A successful save of a new application redirects, and Next.js
+          // delivers that redirect here as a thrown error.
           // unstable_rethrow hands these back to Next.js; only real failures pass.
           unstable_rethrow(error);
           setFailure(t.saveFailed);
@@ -104,9 +117,14 @@ export function ApplicationForm({ createApplication, cancelHref }: ApplicationFo
     (invalid) => {
       // Open before react-hook-form moves focus to the first error, which it
       // cannot do inside a closed <details>.
-      if (invalid.salary) {
-        flushSync(() => setSalaryOpen(true));
-      }
+      flushSync(() => {
+        if (invalid.salary) {
+          setSalaryOpen(true);
+        }
+        if (invalid.contact) {
+          setContactOpen(true);
+        }
+      });
     },
   );
 
@@ -145,46 +163,70 @@ export function ApplicationForm({ createApplication, cancelHref }: ApplicationFo
         {error("companyName")}
       </Field>
 
-      <Field data-invalid={errors.positionTitle ? true : undefined}>
-        <FieldLabel htmlFor="positionTitle">{t.labels.positionTitle}</FieldLabel>
-        <Input
-          id="positionTitle"
-          autoComplete="organization-title"
-          {...describedBy("positionTitle")}
-          {...form.register("positionTitle")}
-        />
-        {error("positionTitle")}
-      </Field>
+      <div className="grid gap-5 sm:grid-cols-[2fr_1fr]">
+        <Field data-invalid={errors.positionTitle ? true : undefined}>
+          <FieldLabel htmlFor="positionTitle">{t.labels.positionTitle}</FieldLabel>
+          <Input
+            id="positionTitle"
+            autoComplete="organization-title"
+            {...describedBy("positionTitle")}
+            {...form.register("positionTitle")}
+          />
+          {error("positionTitle")}
+        </Field>
 
-      <div className="grid gap-5 sm:grid-cols-2">
-        <Field data-invalid={errors.status ? true : undefined}>
-          <FieldLabel htmlFor="status">{t.labels.status}</FieldLabel>
+        <Field data-invalid={errors.seniority ? true : undefined}>
+          <FieldLabel htmlFor="seniority">{t.labels.seniority}</FieldLabel>
           <NativeSelect
-            id="status"
+            id="seniority"
             className="w-full"
-            {...describedBy("status")}
-            {...form.register("status")}
+            {...describedBy("seniority")}
+            {...form.register("seniority", { setValueAs: blankAsNull })}
           >
-            {applicationStatuses.map((status) => (
-              <NativeSelectOption key={status} value={status}>
-                {messages.applications.status[status]}
+            <NativeSelectOption value="">{t.seniorityUnset}</NativeSelectOption>
+            {seniorities.map((seniority) => (
+              <NativeSelectOption key={seniority} value={seniority}>
+                {messages.applications.seniority[seniority]}
               </NativeSelectOption>
             ))}
           </NativeSelect>
-          {error("status")}
+          {error("seniority")}
         </Field>
+      </div>
 
-        <Field data-invalid={errors.appliedAt ? true : undefined}>
-          <FieldLabel htmlFor="appliedAt">{t.labels.appliedAt}</FieldLabel>
-          <Input
-            id="appliedAt"
-            type="date"
-            {...describedBy("appliedAt")}
-            {...form.register("appliedAt", { setValueAs: dayAsInstant })}
-          />
-          {error("appliedAt")}
-        </Field>
+      {!editing && (
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Field data-invalid={errors.status ? true : undefined}>
+            <FieldLabel htmlFor="status">{t.labels.status}</FieldLabel>
+            <NativeSelect
+              id="status"
+              className="w-full"
+              {...describedBy("status")}
+              {...form.register("status")}
+            >
+              {applicationStatuses.map((status) => (
+                <NativeSelectOption key={status} value={status}>
+                  {messages.applications.status[status]}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+            {error("status")}
+          </Field>
 
+          <Field data-invalid={errors.appliedAt ? true : undefined}>
+            <FieldLabel htmlFor="appliedAt">{t.labels.appliedAt}</FieldLabel>
+            <Input
+              id="appliedAt"
+              type="date"
+              {...describedBy("appliedAt")}
+              {...form.register("appliedAt", { setValueAs: dayAsInstant })}
+            />
+            {error("appliedAt")}
+          </Field>
+        </div>
+      )}
+
+      <div className="grid gap-5 sm:grid-cols-3">
         <Field data-invalid={errors.city ? true : undefined}>
           <FieldLabel htmlFor="city">{t.labels.city}</FieldLabel>
           <Input
@@ -194,6 +236,17 @@ export function ApplicationForm({ createApplication, cancelHref }: ApplicationFo
             {...form.register("city")}
           />
           {error("city")}
+        </Field>
+
+        <Field data-invalid={errors.country ? true : undefined}>
+          <FieldLabel htmlFor="country">{t.labels.country}</FieldLabel>
+          <Input
+            id="country"
+            autoComplete="country-name"
+            {...describedBy("country")}
+            {...form.register("country")}
+          />
+          {error("country")}
         </Field>
 
         <Field data-invalid={errors.workMode ? true : undefined}>
@@ -215,11 +268,46 @@ export function ApplicationForm({ createApplication, cancelHref }: ApplicationFo
         </Field>
       </div>
 
-      <Field data-invalid={errors.source ? true : undefined}>
-        <FieldLabel htmlFor="source">{t.labels.source}</FieldLabel>
-        <Input id="source" {...describedBy("source", "source-hint")} {...form.register("source")} />
-        <FieldDescription id="source-hint">{t.sourceHint}</FieldDescription>
-        {error("source")}
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Field data-invalid={errors.channel ? true : undefined}>
+          <FieldLabel htmlFor="channel">{t.labels.channel}</FieldLabel>
+          <NativeSelect
+            id="channel"
+            className="w-full"
+            {...describedBy("channel")}
+            {...form.register("channel")}
+          >
+            {channels.map((channel) => (
+              <NativeSelectOption key={channel} value={channel}>
+                {messages.applications.channel[channel]}
+              </NativeSelectOption>
+            ))}
+          </NativeSelect>
+          {error("channel")}
+        </Field>
+
+        <Field data-invalid={errors.source ? true : undefined}>
+          <FieldLabel htmlFor="source">{t.labels.source}</FieldLabel>
+          <Input
+            id="source"
+            {...describedBy("source", "source-hint")}
+            {...form.register("source")}
+          />
+          <FieldDescription id="source-hint">{t.sourceHint}</FieldDescription>
+          {error("source")}
+        </Field>
+      </div>
+
+      <Field data-invalid={errors.sourceUrl ? true : undefined}>
+        <FieldLabel htmlFor="sourceUrl">{t.labels.sourceUrl}</FieldLabel>
+        <Input
+          id="sourceUrl"
+          type="url"
+          inputMode="url"
+          {...describedBy("sourceUrl")}
+          {...form.register("sourceUrl")}
+        />
+        {error("sourceUrl")}
       </Field>
 
       <Field data-invalid={errors.applicationUrl ? true : undefined}>
@@ -247,6 +335,13 @@ export function ApplicationForm({ createApplication, cancelHref }: ApplicationFo
         onOpenChange={setSalaryOpen}
       />
 
+      <ContactFields
+        register={form.register}
+        errors={errors.contact}
+        open={contactShown}
+        onOpenChange={setContactOpen}
+      />
+
       {failure && (
         <Alert variant="destructive">
           <AlertDescription>
@@ -255,12 +350,16 @@ export function ApplicationForm({ createApplication, cancelHref }: ApplicationFo
         </Alert>
       )}
 
-      <div className="flex flex-wrap gap-2">
-        <Button type="submit" disabled={pending}>
-          {pending ? t.saving : t.submit}
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="submit"
+          disabled={pending || unchanged || !hydrated}
+          className={hydrated ? undefined : awaitingHydrationClass}
+        >
+          {pending ? t.saving : editing ? t.saveChanges : t.submit}
         </Button>
         <Button asChild variant="outline">
-          <Link href={cancelHref}>{t.cancel}</Link>
+          <Link href={backHref}>{messages.applications.back}</Link>
         </Button>
       </div>
     </form>

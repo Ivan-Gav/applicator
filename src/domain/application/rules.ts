@@ -1,26 +1,28 @@
 import {
   type Application,
   type ApplicationStatus,
+  applicationStatuses,
   type SalaryRange,
   SalaryRangeKind,
   type SalaryRangeShape,
 } from "./model";
 
-const allowedTransitions: Readonly<Record<ApplicationStatus, readonly ApplicationStatus[]>> = {
-  draft: ["applied", "withdrawn"],
-  applied: ["screening", "rejected", "withdrawn"],
-  screening: ["interview", "rejected", "withdrawn"],
-  interview: ["interview", "offer", "rejected", "withdrawn"],
-  offer: ["rejected", "withdrawn"],
-  rejected: [],
-  withdrawn: [],
-};
+const allowedStatusTransitions: Readonly<Record<ApplicationStatus, readonly ApplicationStatus[]>> =
+  {
+    draft: ["applied", "withdrawn"],
+    applied: ["screening", "rejected", "withdrawn"],
+    screening: ["interview", "rejected", "withdrawn"],
+    interview: ["interview", "offer", "rejected", "withdrawn"],
+    offer: ["rejected", "withdrawn"],
+    rejected: [],
+    withdrawn: [],
+  };
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
-/** Thrown by {@link transition}; carries both ends of the attempted move. */
-export class IllegalTransitionError extends Error {
-  override readonly name = "IllegalTransitionError";
+/** Thrown by {@link statusTransition}; carries both ends of the attempted move. */
+export class IllegalStatusTransitionError extends Error {
+  override readonly name = "IllegalStatusTransitionError";
 
   constructor(
     readonly from: ApplicationStatus,
@@ -34,23 +36,34 @@ export class IllegalTransitionError extends Error {
  * The status graph never returns to an earlier stage. `interview` may repeat,
  * so each round is its own event.
  */
-export function canTransition(from: ApplicationStatus, to: ApplicationStatus): boolean {
-  return allowedTransitions[from].includes(to);
+export function isStatusTransitionAllowed(from: ApplicationStatus, to: ApplicationStatus): boolean {
+  return allowedStatusTransitions[from].includes(to);
+}
+
+/** The statuses {@link isStatusTransitionAllowed} allows from `from`, in process order. */
+export function nextStatuses(from: ApplicationStatus): readonly ApplicationStatus[] {
+  return applicationStatuses.filter((to) => isStatusTransitionAllowed(from, to));
 }
 
 /**
- * A status change counts as a contact, so `lastContactAt` is always `at`.
+ * `at` is when the new status was entered. A status change also counts as a
+ * contact, so `lastContactAt` becomes `at` as well.
  *
- * @throws {IllegalTransitionError} when {@link canTransition} would return false.
+ * @throws {IllegalStatusTransitionError} when {@link isStatusTransitionAllowed} would return false.
  */
-export function transition(application: Application, to: ApplicationStatus, at: Date): Application {
-  if (!canTransition(application.status, to)) {
-    throw new IllegalTransitionError(application.status, to);
+export function statusTransition(
+  application: Application,
+  to: ApplicationStatus,
+  at: Date,
+): Application {
+  if (!isStatusTransitionAllowed(application.status, to)) {
+    throw new IllegalStatusTransitionError(application.status, to);
   }
 
   return {
     ...application,
     status: to,
+    statusChangedAt: at,
     appliedAt: to === "applied" ? at : application.appliedAt,
     lastContactAt: at,
   };
@@ -58,7 +71,7 @@ export function transition(application: Application, to: ApplicationStatus, at: 
 
 /** `null` for a draft and for an application in a final status. */
 export function daysWithoutResponse(application: Application, now: Date): number | null {
-  if (!hasAllowedTransitions(application.status)) {
+  if (!hasAllowedStatusTransitions(application.status)) {
     return null;
   }
 
@@ -71,8 +84,8 @@ export function daysWithoutResponse(application: Application, now: Date): number
   return Math.max(0, elapsedDays);
 }
 
-function hasAllowedTransitions(status: ApplicationStatus): boolean {
-  return allowedTransitions[status].length > 0;
+function hasAllowedStatusTransitions(status: ApplicationStatus): boolean {
+  return allowedStatusTransitions[status].length > 0;
 }
 
 export function salaryRangeShape({ min, max }: SalaryRange): SalaryRangeShape {

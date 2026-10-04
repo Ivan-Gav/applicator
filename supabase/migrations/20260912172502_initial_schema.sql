@@ -53,9 +53,8 @@ create table public.application (
   source_url         text,   -- where the vacancy was found
   application_url    text,   -- where the application was actually submitted
 
-  -- denormalised current status. status_event is the source of truth; this
-  -- column exists so list views need no subquery per row. Only the domain
-  -- transition function writes to both.
+  -- current status, on the row so list views need no subquery; status_event
+  -- holds its history
   status             text not null default 'draft'
                      check (status in ('draft', 'applied', 'screening',
                                        'interview', 'offer', 'rejected', 'withdrawn')),
@@ -128,7 +127,6 @@ create table public.status_event (
                   check (status in ('draft', 'applied', 'screening',
                                     'interview', 'offer', 'rejected', 'withdrawn')),
   occurred_at     timestamptz not null default now(),
-  note            text,
 
   created_at      timestamptz not null default now()
 );

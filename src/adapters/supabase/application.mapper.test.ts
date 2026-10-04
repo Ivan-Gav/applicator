@@ -4,8 +4,12 @@ import type { CreateApplication } from "@/domain/application/schema";
 import {
   type ApplicationInsertRow,
   type ApplicationRow,
+  type StatusEventRow,
+  statusEventToDomain,
   toDomain,
   toRow,
+  toStatusTransitionRow,
+  toUpdateRow,
 } from "./application.mapper";
 
 const userId = "00000000-0000-4000-8000-00000000000a";
@@ -25,6 +29,7 @@ const fullRow: ApplicationRow = {
   source_url: "https://example.com/jobs/1",
   application_url: "https://example.com/apply/1",
   status: "interview",
+  status_changed_at: "2026-09-10T14:30:00.123+00:00",
   applied_at: "2026-09-01T00:00:00+00:00",
   last_contact_at: "2026-09-10T14:30:00.123+00:00",
   salary_advertised_min: 60_000,
@@ -59,6 +64,7 @@ const fullApplication: Application = {
   sourceUrl: "https://example.com/jobs/1",
   applicationUrl: "https://example.com/apply/1",
   status: "interview",
+  statusChangedAt: new Date("2026-09-10T14:30:00.123Z"),
   appliedAt: new Date("2026-09-01T00:00:00.000Z"),
   lastContactAt: new Date("2026-09-10T14:30:00.123Z"),
   salary: {
@@ -99,7 +105,7 @@ const emptyRow: ApplicationRow = {
   salary_asked_min: null,
   salary_asked_max: null,
   salary_currency: null,
-  salary_period: null,
+  salary_period: "year",
   contact_name: null,
   contact_role: null,
   contact_email: null,
@@ -145,7 +151,7 @@ const emptyInput: CreateApplication = {
     estimated: { min: null, max: null },
     asked: { min: null, max: null },
     currency: null,
-    period: null,
+    period: "year",
   },
   contact: { name: null, role: null, email: null, phone: null, url: null },
   notes: null,
@@ -183,6 +189,7 @@ describe("toDomain", () => {
       sourceUrl: null,
       applicationUrl: null,
       status: "draft",
+      statusChangedAt: new Date("2026-09-10T14:30:00.123Z"),
       appliedAt: null,
       lastContactAt: null,
       salary: emptyInput.salary,
@@ -271,7 +278,7 @@ describe("toRow", () => {
       salary_estimated_max: null,
       salary_asked_min: null,
       salary_asked_max: null,
-      salary_period: null,
+      salary_period: "year",
       contact_name: null,
       contact_role: null,
       contact_email: null,
@@ -284,7 +291,14 @@ describe("toRow", () => {
   it("leaves identity, timestamps and archiving to the database", () => {
     const row = toRow(userId, fullInput);
 
-    for (const column of ["id", "created_at", "updated_at", "last_contact_at", "archived_at"]) {
+    for (const column of [
+      "id",
+      "created_at",
+      "updated_at",
+      "status_changed_at",
+      "last_contact_at",
+      "archived_at",
+    ]) {
       expect(row).not.toHaveProperty(column);
     }
   });
@@ -295,13 +309,107 @@ describe("round trip", () => {
     ["every field set", fullInput],
     ["every optional field null", emptyInput],
   ])("returns what went in with %s", (_, input) => {
-    const { id, lastContactAt, archivedAt, ...roundTripped } = toDomain(
+    const { id, statusChangedAt, lastContactAt, archivedAt, ...roundTripped } = toDomain(
       stored(toRow(userId, input)),
     );
 
     expect(roundTripped).toEqual(input);
     expect(id).toBe(fullRow.id);
+    expect(statusChangedAt).toEqual(new Date(fullRow.status_changed_at));
     expect(lastContactAt).toBeNull();
     expect(archivedAt).toBeNull();
+  });
+});
+
+describe("toUpdateRow", () => {
+  it("writes only the columns of the fields the patch carries", () => {
+    expect(toUpdateRow({ notes: "Called back", city: null })).toEqual({
+      notes: "Called back",
+      city: null,
+    });
+  });
+
+  it("maps every editable field to its column, and never status or the applied date", () => {
+    expect(toUpdateRow(fullInput)).toEqual({
+      company_name: "Acme",
+      position_title: "Backend Engineer",
+      seniority: "senior",
+      city: "Berlin",
+      country: "Germany",
+      work_mode: "hybrid",
+      channel: "referral",
+      source: "LinkedIn",
+      source_url: "https://example.com/jobs/1",
+      application_url: "https://example.com/apply/1",
+      salary_advertised_min: 60_000,
+      salary_advertised_max: 70_000,
+      salary_estimated_min: 75_000,
+      salary_estimated_max: 80_000,
+      salary_asked_min: 72_000,
+      salary_asked_max: 74_000,
+      salary_currency: "CHF",
+      salary_period: "year",
+      contact_name: "Jane Doe",
+      contact_role: "Recruiter",
+      contact_email: "jane@example.com",
+      contact_phone: "+49 30 1234567",
+      contact_url: "https://linkedin.com/in/jane",
+      notes: "Referred by Max",
+    });
+  });
+
+  it("writes unknown salary and contact parts as null", () => {
+    expect(toUpdateRow({ salary: emptyInput.salary, contact: emptyInput.contact })).toEqual({
+      salary_advertised_min: null,
+      salary_advertised_max: null,
+      salary_estimated_min: null,
+      salary_estimated_max: null,
+      salary_asked_min: null,
+      salary_asked_max: null,
+      salary_currency: null,
+      salary_period: "year",
+      contact_name: null,
+      contact_role: null,
+      contact_email: null,
+      contact_phone: null,
+      contact_url: null,
+    });
+  });
+});
+
+describe("toStatusTransitionRow", () => {
+  it("writes the status, the instant it was entered, and the dates a transition sets", () => {
+    expect(toStatusTransitionRow(fullApplication)).toEqual({
+      status: "interview",
+      status_changed_at: "2026-09-10T14:30:00.123Z",
+      applied_at: "2026-09-01T00:00:00.000Z",
+      last_contact_at: "2026-09-10T14:30:00.123Z",
+    });
+  });
+
+  it("writes an unknown applied date as null", () => {
+    expect(toStatusTransitionRow({ ...fullApplication, appliedAt: null }).applied_at).toBeNull();
+  });
+});
+
+describe("statusEventToDomain", () => {
+  const row: StatusEventRow = {
+    id: "00000000-0000-4000-8000-0000000000e1",
+    user_id: userId,
+    application_id: fullRow.id,
+    status: "screening",
+    occurred_at: "2026-09-05T00:00:00+02:00",
+    created_at: "2026-09-08T10:00:00+00:00",
+  };
+
+  it("keeps the status and the instant it occurred, and nothing of storage", () => {
+    expect(statusEventToDomain(row)).toEqual({
+      status: "screening",
+      occurredAt: new Date("2026-09-04T22:00:00.000Z"),
+    });
+  });
+
+  it("refuses an unknown status instead of passing it through", () => {
+    expect(() => statusEventToDomain({ ...row, status: "ghosted" })).toThrow("status_event.status");
   });
 });

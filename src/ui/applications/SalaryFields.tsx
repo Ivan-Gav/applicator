@@ -31,8 +31,6 @@ function amountValue(value: unknown) {
   return /^\d+$/.test(trimmed) ? Number(trimmed) : trimmed;
 }
 
-const blankAsNull = (value: unknown) => (value === "" ? null : value);
-
 function describedBy(invalid: boolean, errorId: string, withHint = false) {
   const ids = [invalid ? errorId : undefined, withHint ? hintId : undefined].filter(Boolean);
   return {
@@ -75,7 +73,11 @@ export function SalaryFields({ register, errors, open, onOpenChange }: SalaryFie
                         inputMode="numeric"
                         autoComplete="off"
                         {...describedBy(invalid, errorId, true)}
-                        {...register(`salary.${amount}.${end}`, { setValueAs: amountValue })}
+                        {...register(`salary.${amount}.${end}`, {
+                          setValueAs: amountValue,
+                          // The schema pins a reversed range to min, so a fixed max must recheck it.
+                          deps: end === "max" ? `salary.${amount}.min` : undefined,
+                        })}
                       />
                     </Field>
                   );
@@ -109,9 +111,8 @@ export function SalaryFields({ register, errors, open, onOpenChange }: SalaryFie
               id="salary-period"
               className="w-full"
               {...describedBy(periodInvalid, "salary-period-error")}
-              {...register("salary.period", { setValueAs: blankAsNull })}
+              {...register("salary.period")}
             >
-              <NativeSelectOption value="">{t.periodUnset}</NativeSelectOption>
               {salaryPeriods.map((period) => (
                 <NativeSelectOption key={period} value={period}>
                   {messages.applications.salary.period[period]}

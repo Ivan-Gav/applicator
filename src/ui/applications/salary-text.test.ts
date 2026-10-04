@@ -20,16 +20,13 @@ describe("salaryText", () => {
     expect(salaryText({ min: null, max: null }, eurPerYear)).toBe(t.range.unknown());
   });
 
-  it("leaves out a currency or period that is unknown", () => {
+  it("leaves out a currency that is unknown", () => {
     const range = { min: 45, max: 45 };
     const amount = t.range.exact({ amount: "45" });
 
     expect(salaryText(range, { currency: null, period: "hour" })).toBe(
       t.amount(amount, null, t.period.hour),
     );
-    expect(salaryText(range, { currency: "CHF", period: null })).toBe(
-      t.amount(amount, "CHF", null),
-    );
-    expect(t.amount(amount, "CHF", null)).toBe(`${amount} CHF`);
+    expect(t.amount(amount, null, t.period.hour)).toBe(`${amount} ${t.period.hour}`);
   });
 });

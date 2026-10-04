@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { SignInFailureReason } from "@/domain/user/model";
 import {
+  ApplicationsView,
   afterSignInPath,
   afterSignInRoute,
+  applicationPath,
+  applicationsPath,
+  applicationsSearchParam,
+  applicationsViewOf,
   magicLinkCallbackPath,
   redirectToIn,
   redirectToParam,
@@ -78,4 +83,41 @@ describe("redirectToIn", () => {
     expect(redirectToIn(routes.signIn)).toBeNull();
     expect(redirectToIn(signInPath({ reason: SignInFailureReason.LinkExpired }))).toBeNull();
   });
+});
+
+describe("applicationPath", () => {
+  it("is the application's id below the list", () => {
+    expect(applicationPath("00000000-0000-4000-8000-0000000000a1")).toBe(
+      `${routes.applications}/00000000-0000-4000-8000-0000000000a1`,
+    );
+  });
+
+  it("keeps an id within one path segment", () => {
+    expect(parse(applicationPath("../x?y")).pathname).toBe(`${routes.applications}/..%2Fx%3Fy`);
+  });
+});
+
+describe("applicationsPath", () => {
+  it("is the bare list for the active view", () => {
+    expect(applicationsPath()).toBe(routes.applications);
+    expect(applicationsPath(ApplicationsView.Active)).toBe(routes.applications);
+  });
+
+  it("carries the archived view as a search parameter that reads back as itself", () => {
+    const url = parse(applicationsPath(ApplicationsView.Archived));
+
+    expect(url.pathname).toBe(routes.applications);
+    expect(applicationsViewOf(url.searchParams.get(applicationsSearchParam.view))).toBe(
+      ApplicationsView.Archived,
+    );
+  });
+});
+
+describe("applicationsViewOf", () => {
+  it.each([undefined, null, "", "deleted", ["archived"]])(
+    "reads %j as the active view",
+    (value) => {
+      expect(applicationsViewOf(value)).toBe(ApplicationsView.Active);
+    },
+  );
 });

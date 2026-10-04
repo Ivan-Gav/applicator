@@ -3,6 +3,7 @@
  * For e2e/ only (enforced by ESLint); must never serve a user request.
  */
 import { createClient } from "@supabase/supabase-js";
+import type { Database } from "./database.types";
 import { supabaseUrl } from "./env";
 
 export function createServiceRoleClient() {
@@ -10,7 +11,7 @@ export function createServiceRoleClient() {
   if (!key) {
     throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set; it is needed for the E2E setup only.");
   }
-  return createClient(supabaseUrl(), key, {
+  return createClient<Database>(supabaseUrl(), key, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 }

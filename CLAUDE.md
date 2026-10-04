@@ -153,7 +153,7 @@ so RLS covers the journal. Code writes `status` only; it never inserts into
 `status_event` itself.
 
 **Transition rules stay in the domain.** Whether a move from one status to
-another is legal is decided by `canTransition` in
+another is legal is decided by `isStatusTransitionAllowed` in
 `src/domain/application/rules.ts`. The trigger only journals what happened.
 Never move rule logic into the database.
 

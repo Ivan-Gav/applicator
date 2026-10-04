@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { type Application, type ApplicationStatus, SalaryRangeKind } from "./model";
+import { anApplication } from "@/test/application.fixture";
+import { type ApplicationStatus, SalaryRangeKind } from "./model";
 import {
-  IllegalTransitionError,
-  canTransition,
+  IllegalStatusTransitionError,
+  isStatusTransitionAllowed,
   daysWithoutResponse,
+  nextStatuses,
   salaryRangeShape,
-  transition,
+  statusTransition,
 } from "./rules";
 
 const allStatuses: readonly ApplicationStatus[] = [
@@ -52,80 +54,88 @@ const illegalMoves: ReadonlyArray<[ApplicationStatus, ApplicationStatus]> = [
   ["offer", "offer"],
 ];
 
-function anApplication(overrides: Partial<Application> = {}): Application {
-  return {
-    id: "app-1",
-    companyName: "Acme",
-    positionTitle: "Engineer",
-    seniority: null,
-    city: null,
-    country: null,
-    workMode: null,
-    channel: "direct",
-    source: null,
-    sourceUrl: null,
-    applicationUrl: null,
-    status: "applied",
-    appliedAt: new Date("2026-03-01T09:00:00Z"),
-    lastContactAt: null,
-    salary: {
-      advertised: { min: null, max: null },
-      estimated: { min: null, max: null },
-      asked: { min: null, max: null },
-      currency: "EUR",
-      period: null,
-    },
-    contact: { name: null, role: null, email: null, phone: null, url: null },
-    notes: null,
-    archivedAt: null,
-    ...overrides,
-  };
-}
-
-describe("canTransition", () => {
+describe("isStatusTransitionAllowed", () => {
   it.each(legalMoves)("allows %s -> %s", (from, to) => {
-    expect(canTransition(from, to)).toBe(true);
+    expect(isStatusTransitionAllowed(from, to)).toBe(true);
   });
 
   it.each(illegalMoves)("forbids %s -> %s", (from, to) => {
-    expect(canTransition(from, to)).toBe(false);
+    expect(isStatusTransitionAllowed(from, to)).toBe(false);
   });
 
   it.each(["rejected", "withdrawn"] as const)("treats %s as terminal", (terminal) => {
     for (const to of allStatuses) {
-      expect(canTransition(terminal, to)).toBe(false);
+      expect(isStatusTransitionAllowed(terminal, to)).toBe(false);
     }
   });
 });
 
-describe("transition", () => {
+describe("nextStatuses", () => {
+  it.each(allStatuses)("offers from %s exactly what isStatusTransitionAllowed allows", (from) => {
+    expect(nextStatuses(from)).toEqual(
+      allStatuses.filter((to) => isStatusTransitionAllowed(from, to)),
+    );
+  });
+
+  it("lists the moves in process order", () => {
+    expect(nextStatuses("applied")).toEqual(["screening", "rejected", "withdrawn"]);
+    expect(nextStatuses("interview")).toEqual(["interview", "offer", "rejected", "withdrawn"]);
+  });
+
+  it.each(["rejected", "withdrawn"] as const)("offers nothing from %s", (terminal) => {
+    expect(nextStatuses(terminal)).toEqual([]);
+  });
+});
+
+describe("statusTransition", () => {
   const at = new Date("2026-03-10T12:00:00Z");
 
-  it.each(legalMoves)("moves %s -> %s and records the contact time", (from, to) => {
-    const result = transition(anApplication({ status: from }), to, at);
+  it.each(legalMoves)("moves %s -> %s, entered and contacted at the given time", (from, to) => {
+    const result = statusTransition(anApplication({ status: from }), to, at);
 
     expect(result.status).toBe(to);
+    expect(result.statusChangedAt).toEqual(at);
     expect(result.lastContactAt).toEqual(at);
+  });
+
+  it("accepts a time in the past, as when a reply is recorded days later", () => {
+    const friday = new Date("2026-03-06T00:00:00Z");
+
+    const result = statusTransition(anApplication({ status: "applied" }), "screening", friday);
+
+    expect(result.statusChangedAt).toEqual(friday);
+    expect(result.lastContactAt).toEqual(friday);
+  });
+
+  it("leaves every other field as it was", () => {
+    const original = anApplication({ status: "screening", notes: "Kept", archivedAt: at });
+
+    expect(statusTransition(original, "interview", at)).toEqual({
+      ...original,
+      status: "interview",
+      statusChangedAt: at,
+      lastContactAt: at,
+    });
   });
 
   it("stamps appliedAt when the application is sent", () => {
     const draft = anApplication({ status: "draft", appliedAt: null });
 
-    expect(transition(draft, "applied", at).appliedAt).toEqual(at);
+    expect(statusTransition(draft, "applied", at).appliedAt).toEqual(at);
   });
 
   it("keeps the original appliedAt on later moves", () => {
     const appliedAt = new Date("2026-03-01T09:00:00Z");
     const applied = anApplication({ status: "applied", appliedAt });
 
-    expect(transition(applied, "screening", at).appliedAt).toEqual(appliedAt);
+    expect(statusTransition(applied, "screening", at).appliedAt).toEqual(appliedAt);
   });
 
   it("does not mutate its argument", () => {
     const original = anApplication({ status: "applied" });
     const snapshot = structuredClone(original);
 
-    transition(original, "screening", at);
+    statusTransition(original, "screening", at);
 
     expect(original).toEqual(snapshot);
   });
@@ -133,27 +143,27 @@ describe("transition", () => {
   it("returns a new object", () => {
     const original = anApplication({ status: "interview" });
 
-    expect(transition(original, "interview", at)).not.toBe(original);
+    expect(statusTransition(original, "interview", at)).not.toBe(original);
   });
 
-  it.each(illegalMoves)("throws IllegalTransitionError for %s -> %s", (from, to) => {
-    const attempt = () => transition(anApplication({ status: from }), to, at);
+  it.each(illegalMoves)("throws IllegalStatusTransitionError for %s -> %s", (from, to) => {
+    const attempt = () => statusTransition(anApplication({ status: from }), to, at);
 
-    expect(attempt).toThrow(IllegalTransitionError);
+    expect(attempt).toThrow(IllegalStatusTransitionError);
     expect(attempt).toThrow(`Cannot transition application from "${from}" to "${to}"`);
   });
 
   it("exposes the attempted move on the error", () => {
     let caught: unknown;
     try {
-      transition(anApplication({ status: "offer" }), "interview", at);
+      statusTransition(anApplication({ status: "offer" }), "interview", at);
     } catch (error) {
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(IllegalTransitionError);
-    const error = caught as IllegalTransitionError;
-    expect(error.name).toBe("IllegalTransitionError");
+    expect(caught).toBeInstanceOf(IllegalStatusTransitionError);
+    const error = caught as IllegalStatusTransitionError;
+    expect(error.name).toBe("IllegalStatusTransitionError");
     expect(error.from).toBe("offer");
     expect(error.to).toBe("interview");
   });

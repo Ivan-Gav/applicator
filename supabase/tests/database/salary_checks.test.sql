@@ -1,11 +1,11 @@
 -- Pins the salary CHECK constraints to the values createApplicationSchema
 -- accepts and rejects; src/domain/application/schema.test.ts holds the mirror.
 --
--- 23514 is check_violation, 22003 numeric_value_out_of_range. Rolled back at
--- the end.
+-- 23514 is check_violation, 22003 numeric_value_out_of_range, 23502
+-- not_null_violation. Rolled back at the end.
 
 begin;
-select plan(12);
+select plan(14);
 
 insert into auth.users (id, email)
 values ('00000000-0000-4000-8000-00000000000a', 'alice@example.test');
@@ -77,6 +77,18 @@ select throws_ok(
   $$ insert into public.application (user_id, company_name, position_title, salary_period)
      values ('00000000-0000-4000-8000-00000000000a', 'Acme', 'Engineer', 'week') $$,
   '23514', null, 'a period outside the enumeration is refused'
+);
+select throws_ok(
+  $$ insert into public.application (user_id, company_name, position_title, salary_period)
+     values ('00000000-0000-4000-8000-00000000000a', 'Acme', 'Engineer', null) $$,
+  '23502', null, 'a missing period is refused'
+);
+select is(
+  (select salary_period from public.application
+    where user_id = '00000000-0000-4000-8000-00000000000a' and company_name = 'Acme'
+    limit 1),
+  'year',
+  'a period left out is per year'
 );
 
 select * from finish();

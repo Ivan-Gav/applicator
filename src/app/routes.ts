@@ -12,6 +12,35 @@ export const routes = {
 
 export const afterSignInRoute = routes.applications;
 
+/** The page of one application. */
+export function applicationPath(id: string): string {
+  return `${routes.applications}/${encodeURIComponent(id)}`;
+}
+
+export const applicationsSearchParam = {
+  view: "view",
+} as const;
+
+// Which applications the list shows.
+export const ApplicationsView = {
+  Active: "active",
+  Archived: "archived",
+} as const;
+export type ApplicationsView = (typeof ApplicationsView)[keyof typeof ApplicationsView];
+
+export function applicationsPath(view: ApplicationsView = ApplicationsView.Active): string {
+  if (view === ApplicationsView.Active) {
+    return routes.applications;
+  }
+  const params = new URLSearchParams({ [applicationsSearchParam.view]: view });
+  return `${routes.applications}?${params.toString()}`;
+}
+
+/** The view a list request asks for; anything unknown is the active view. */
+export function applicationsViewOf(value: unknown): ApplicationsView {
+  return value === ApplicationsView.Archived ? ApplicationsView.Archived : ApplicationsView.Active;
+}
+
 export const sourceRepositoryUrl = "https://github.com/Ivan-Gav/applicator";
 
 export const redirectToParam = "redirectTo";

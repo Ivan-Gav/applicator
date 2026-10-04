@@ -26,7 +26,7 @@ export default async function ProtectedLayout({ children }: { children: ReactNod
           </form>
         </div>
       </header>
-      <main className="flex flex-1 flex-col gap-6 p-6">{children}</main>
+      <main className="flex flex-1 flex-col gap-6 p-6 pb-24">{children}</main>
     </>
   );
 }

@@ -13,7 +13,7 @@ export default function NewApplicationPage() {
   return (
     <>
       <h1 className="text-2xl font-semibold tracking-tight">{messages.applications.form.title}</h1>
-      <ApplicationForm createApplication={createApplication} cancelHref={routes.applications} />
+      <ApplicationForm save={createApplication} backHref={routes.applications} />
     </>
   );
 }

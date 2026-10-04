@@ -1,14 +1,13 @@
 -- Applicator: status_event becomes a journal written by a trigger
 --
 -- application.status is the current status; status_event records every value
--- it has held. This supersedes the initial schema's note that status_event is
--- the source of truth.
+-- it has held.
 --
 -- The trigger runs in the transaction of the write that fired it, so an
 -- application and its journal entry exist together or not at all.
 --
 -- It records what happened and never decides whether a move is legal: that is
--- canTransition() in src/domain/application/rules.ts.
+-- isStatusTransitionAllowed() in src/domain/application/rules.ts.
 
 create function public.record_status_event()
 returns trigger

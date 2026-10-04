@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  applicationIdSchema,
   applicationStatusSchema,
   contactSchema,
   createApplicationSchema,
-  invalidCreateFields,
+  invalidApplicationFields,
   salaryRangeSchema,
+  statusChangeSchema,
   updateApplicationSchema,
 } from "./schema";
 
@@ -123,7 +125,7 @@ describe("createApplicationSchema", () => {
         estimated: { min: null, max: null },
         asked: { min: null, max: null },
         currency: "EUR",
-        period: null,
+        period: "year",
       },
       contact: { name: null, role: null, email: null, phone: null, url: null },
       notes: null,
@@ -205,6 +207,13 @@ describe("createApplicationSchema", () => {
     expect(issuesAt(result)).toEqual(["seniority", "workMode", "channel", "salary.period"]);
   });
 
+  it("requires a salary period, per year unless given", () => {
+    expect(createApplicationSchema.parse({ ...required, salary: {} }).salary.period).toBe("year");
+    expect(
+      issuesAt(createApplicationSchema.safeParse({ ...required, salary: { period: null } })),
+    ).toEqual(["salary.period"]);
+  });
+
   it("accepts only http(s) urls", () => {
     const ok = createApplicationSchema.parse({
       ...required,
@@ -244,7 +253,7 @@ describe("createApplicationSchema", () => {
   it("allows an unknown currency", () => {
     const parsed = createApplicationSchema.parse({
       ...required,
-      salary: { currency: null, period: null },
+      salary: { currency: null },
     });
 
     expect(parsed.salary.currency).toBeNull();
@@ -401,13 +410,13 @@ describe("updateApplicationSchema", () => {
   });
 });
 
-describe("invalidCreateFields", () => {
+describe("invalidApplicationFields", () => {
   function fieldsOf(input: unknown) {
     const result = createApplicationSchema.safeParse(input);
     if (result.success) {
       throw new Error("expected the input to be rejected");
     }
-    return invalidCreateFields(result.error);
+    return invalidApplicationFields(result.error);
   }
 
   it("names each rejected top-level field", () => {
@@ -442,5 +451,51 @@ describe("invalidCreateFields", () => {
 
   it("names nothing for a failure outside any field", () => {
     expect(fieldsOf("not an object")).toEqual([]);
+  });
+
+  it("names the fields of a rejected update the same way", () => {
+    const result = updateApplicationSchema.safeParse({
+      positionTitle: " ",
+      salary: { asked: { min: 2, max: 1 } },
+    });
+    if (result.success) {
+      throw new Error("expected the update to be rejected");
+    }
+
+    expect(invalidApplicationFields(result.error)).toEqual(["positionTitle", "salary.asked"]);
+  });
+});
+
+describe("applicationIdSchema", () => {
+  it("accepts a uuid", () => {
+    expect(applicationIdSchema.parse("00000000-0000-4000-8000-0000000000a1")).toBe(
+      "00000000-0000-4000-8000-0000000000a1",
+    );
+  });
+
+  it.each(["", "1", "not-a-uuid", "00000000-0000-4000-8000-0000000000a1; drop table"])(
+    "rejects %j, which the database could not take as an id",
+    (id) => {
+      expect(applicationIdSchema.safeParse(id).success).toBe(false);
+    },
+  );
+});
+
+describe("statusChangeSchema", () => {
+  it("takes a status", () => {
+    expect(statusChangeSchema.parse({ status: "screening" })).toEqual({ status: "screening" });
+  });
+
+  it("drops a date or a note: a change is dated when stored and carries nothing else", () => {
+    expect(statusChangeSchema.parse({ status: "screening", at: new Date(), note: "Why" })).toEqual({
+      status: "screening",
+    });
+  });
+
+  it.each([
+    ["an unknown status", { status: "ghosted" }],
+    ["a missing status", {}],
+  ])("rejects %s", (_, input) => {
+    expect(issuesAt(statusChangeSchema.safeParse(input))).toEqual(["status"]);
   });
 });

@@ -1,5 +1,12 @@
 import { z } from "zod";
-import { applicationStatuses, channels, salaryPeriods, seniorities, workModes } from "./model";
+import {
+  applicationStatuses,
+  channels,
+  defaultSalaryPeriod,
+  salaryPeriods,
+  seniorities,
+  workModes,
+} from "./model";
 
 // Form fields arrive as "" when left blank; the domain stores absence as null.
 const blankToNull = (value: unknown) =>
@@ -35,7 +42,7 @@ export const salarySchema = z.object({
       .nullable()
       .default("EUR"),
   ),
-  period: z.enum(salaryPeriods).nullable().default(null),
+  period: z.enum(salaryPeriods).default(defaultSalaryPeriod),
 });
 
 export const contactSchema = z.object({
@@ -69,7 +76,7 @@ const editableFields = {
 export const createApplicationSchema = z.object({
   companyName: editableFields.companyName,
   positionTitle: editableFields.positionTitle,
-  // Any status may start a record; canTransition() governs only later changes.
+  // Any status may start a record; isStatusTransitionAllowed() governs only later changes.
   status: applicationStatusSchema.default("draft"),
   appliedAt: optionalInstant.default(null),
   seniority: editableFields.seniority.default(null),
@@ -85,7 +92,7 @@ export const createApplicationSchema = z.object({
     estimated: { min: null, max: null },
     asked: { min: null, max: null },
     currency: "EUR",
-    period: null,
+    period: defaultSalaryPeriod,
   }),
   contact: editableFields.contact.default({
     name: null,
@@ -104,34 +111,42 @@ export const updateApplicationSchema = z
   .partial()
   .refine((patch) => Object.values(patch).some((value) => value !== undefined));
 
+export const applicationIdSchema = z.uuid();
+
+// A move to `status`. It is dated when it is stored, never by the caller.
+export const statusChangeSchema = z.object({
+  status: applicationStatusSchema,
+});
+
 export type CreateApplicationInput = z.input<typeof createApplicationSchema>;
 export type CreateApplication = z.output<typeof createApplicationSchema>;
 export type UpdateApplicationInput = z.input<typeof updateApplicationSchema>;
 export type UpdateApplication = z.output<typeof updateApplicationSchema>;
+export type StatusChange = z.output<typeof statusChangeSchema>;
 
 type SalaryPart = keyof z.output<typeof salarySchema>;
 
 /**
- * A field the create input can be rejected on: a top-level field, or one part
- * of the salary block, so that a failure names the amount it concerns.
+ * A field the create or update input can be rejected on: a top-level field, or
+ * one part of the salary block, so that a failure names the amount it concerns.
  */
-export type CreateApplicationField = keyof CreateApplicationInput | `salary.${SalaryPart}`;
+export type ApplicationField = keyof CreateApplicationInput | `salary.${SalaryPart}`;
 
-/** Returned by the create action in place of a redirect when the input is rejected. */
-export type CreateApplicationRejection = { invalidFields: CreateApplicationField[] };
+/** Returned by the create and update actions when the input is rejected. */
+export type ApplicationRejection = { invalidFields: ApplicationField[] };
 
 const topLevelFields = new Set<PropertyKey>(Object.keys(createApplicationSchema.shape));
 const salaryParts = new Set<PropertyKey>(Object.keys(salarySchema.shape));
 
-function fieldOf([top, part]: readonly PropertyKey[]): CreateApplicationField | null {
+function fieldOf([top, part]: readonly PropertyKey[]): ApplicationField | null {
   if (top === "salary" && salaryParts.has(part as PropertyKey)) {
     return `salary.${part as SalaryPart}`;
   }
   return topLevelFields.has(top as PropertyKey) ? (top as keyof CreateApplicationInput) : null;
 }
 
-/** The fields a failed parse of the create input complained about, each once. */
-export function invalidCreateFields(error: z.ZodError): CreateApplicationField[] {
+/** The fields a failed parse of the create or update input complained about, each once. */
+export function invalidApplicationFields(error: z.ZodError): ApplicationField[] {
   const fields = error.issues.map((issue) => fieldOf(issue.path));
   return [...new Set(fields)].filter((field) => field !== null);
 }

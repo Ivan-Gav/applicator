@@ -4,7 +4,7 @@ import { Badge } from "@/ui/kit/badge";
 import { messages } from "@/ui/messages";
 
 const statusStyles: Record<ApplicationStatus, string> = {
-  draft: "bg-muted text-muted-foreground",
+  draft: "bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300",
   applied: "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-200",
   screening: "bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-200",
   interview: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200",

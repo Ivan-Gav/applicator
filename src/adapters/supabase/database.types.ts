@@ -29,11 +29,12 @@ export type Database = {
           salary_currency: string | null;
           salary_estimated_max: number | null;
           salary_estimated_min: number | null;
-          salary_period: string | null;
+          salary_period: string;
           seniority: string | null;
           source: string | null;
           source_url: string | null;
           status: string;
+          status_changed_at: string;
           updated_at: string;
           user_id: string;
           work_mode: string | null;
@@ -63,11 +64,12 @@ export type Database = {
           salary_currency?: string | null;
           salary_estimated_max?: number | null;
           salary_estimated_min?: number | null;
-          salary_period?: string | null;
+          salary_period?: string;
           seniority?: string | null;
           source?: string | null;
           source_url?: string | null;
           status?: string;
+          status_changed_at?: string;
           updated_at?: string;
           user_id: string;
           work_mode?: string | null;
@@ -97,11 +99,12 @@ export type Database = {
           salary_currency?: string | null;
           salary_estimated_max?: number | null;
           salary_estimated_min?: number | null;
-          salary_period?: string | null;
+          salary_period?: string;
           seniority?: string | null;
           source?: string | null;
           source_url?: string | null;
           status?: string;
+          status_changed_at?: string;
           updated_at?: string;
           user_id?: string;
           work_mode?: string | null;
@@ -244,7 +247,6 @@ export type Database = {
           application_id: string;
           created_at: string;
           id: string;
-          note: string | null;
           occurred_at: string;
           status: string;
           user_id: string;
@@ -253,7 +255,6 @@ export type Database = {
           application_id: string;
           created_at?: string;
           id?: string;
-          note?: string | null;
           occurred_at?: string;
           status: string;
           user_id: string;
@@ -262,7 +263,6 @@ export type Database = {
           application_id?: string;
           created_at?: string;
           id?: string;
-          note?: string | null;
           occurred_at?: string;
           status?: string;
           user_id?: string;

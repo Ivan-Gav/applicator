@@ -20,6 +20,7 @@ export type Channel = (typeof channels)[number];
 
 export const salaryPeriods = ["year", "month", "day", "hour"] as const;
 export type SalaryPeriod = (typeof salaryPeriods)[number];
+export const defaultSalaryPeriod: SalaryPeriod = "year";
 
 /**
  * Encoding convention, so that no extra flags are needed:
@@ -62,17 +63,14 @@ export type Salary = {
   /** What was stated in the application. */
   asked: SalaryRange;
   currency: string | null;
-  period: SalaryPeriod | null;
+  period: SalaryPeriod;
 };
 
+export const contactParts = ["name", "role", "email", "phone", "url"] as const;
+export type ContactPart = (typeof contactParts)[number];
+
 // One contact per application; every part may be unknown.
-export type Contact = {
-  name: string | null;
-  role: string | null;
-  email: string | null;
-  phone: string | null;
-  url: string | null;
-};
+export type Contact = Record<ContactPart, string | null>;
 
 export type Application = {
   id: string;
@@ -87,6 +85,8 @@ export type Application = {
   sourceUrl: string | null;
   applicationUrl: string | null;
   status: ApplicationStatus;
+  /** When the current status was entered. */
+  statusChangedAt: Date;
   appliedAt: Date | null;
   lastContactAt: Date | null;
   salary: Salary;
@@ -94,3 +94,20 @@ export type Application = {
   notes: string | null;
   archivedAt: Date | null;
 };
+
+/** One entry of an application's status history. */
+export type StatusEvent = {
+  status: ApplicationStatus;
+  occurredAt: Date;
+};
+
+// Why a status change was refused.
+export const StatusChangeFailure = {
+  // The request does not describe a status change.
+  Invalid: "invalid",
+  // isStatusTransitionAllowed() refuses the move.
+  Illegal: "illegal",
+  // The application is gone, or its status changed since it was read.
+  Outdated: "outdated",
+} as const;
+export type StatusChangeFailure = (typeof StatusChangeFailure)[keyof typeof StatusChangeFailure];

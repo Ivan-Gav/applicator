@@ -1,22 +1,27 @@
 import {
   type Application,
   applicationStatuses,
+  type StatusEvent,
   channels,
   salaryPeriods,
   seniorities,
   workModes,
 } from "@/domain/application/model";
-import type { CreateApplication } from "@/domain/application/schema";
-import type { Tables, TablesInsert } from "./database.types";
+import type { CreateApplication, UpdateApplication } from "@/domain/application/schema";
+import type { Tables, TablesInsert, TablesUpdate } from "./database.types";
 
 export type ApplicationRow = Tables<"application">;
 export type ApplicationInsertRow = TablesInsert<"application">;
+export type ApplicationUpdateRow = TablesUpdate<"application">;
+export type StatusEventRow = Tables<"status_event">;
 
 // The CHECK constraints keep these columns in range; a value outside it means
-// the schema and the domain have drifted apart.
+// the schema and the domain have drifted apart. `column` is table-qualified
+// unless it is on application.
 function oneOf<T extends string>(allowed: readonly T[], value: string, column: string): T {
   if (!(allowed as readonly string[]).includes(value)) {
-    throw new Error(`application.${column} holds unknown value "${value}"`);
+    const qualified = column.includes(".") ? column : `application.${column}`;
+    throw new Error(`${qualified} holds unknown value "${value}"`);
   }
   return value as T;
 }
@@ -47,6 +52,7 @@ export function toDomain(row: ApplicationRow): Application {
     sourceUrl: row.source_url,
     applicationUrl: row.application_url,
     status: oneOf(applicationStatuses, row.status, "status"),
+    statusChangedAt: new Date(row.status_changed_at),
     appliedAt: dateOrNull(row.applied_at),
     lastContactAt: dateOrNull(row.last_contact_at),
     salary: {
@@ -54,7 +60,7 @@ export function toDomain(row: ApplicationRow): Application {
       estimated: { min: row.salary_estimated_min, max: row.salary_estimated_max },
       asked: { min: row.salary_asked_min, max: row.salary_asked_max },
       currency: row.salary_currency,
-      period: oneOfOrNull(salaryPeriods, row.salary_period, "salary_period"),
+      period: oneOf(salaryPeriods, row.salary_period, "salary_period"),
     },
     contact: {
       name: row.contact_name,
@@ -97,5 +103,58 @@ export function toRow(userId: string, application: CreateApplication): Applicati
     contact_phone: application.contact.phone,
     contact_url: application.contact.url,
     notes: application.notes,
+  };
+}
+
+/** The columns of the fields `patch` carries; absent fields stay as stored. */
+export function toUpdateRow(patch: UpdateApplication): ApplicationUpdateRow {
+  const { salary, contact } = patch;
+  const row: ApplicationUpdateRow = {
+    company_name: patch.companyName,
+    position_title: patch.positionTitle,
+    seniority: patch.seniority,
+    city: patch.city,
+    country: patch.country,
+    work_mode: patch.workMode,
+    channel: patch.channel,
+    source: patch.source,
+    source_url: patch.sourceUrl,
+    application_url: patch.applicationUrl,
+    notes: patch.notes,
+    ...(salary && {
+      salary_advertised_min: salary.advertised.min,
+      salary_advertised_max: salary.advertised.max,
+      salary_estimated_min: salary.estimated.min,
+      salary_estimated_max: salary.estimated.max,
+      salary_asked_min: salary.asked.min,
+      salary_asked_max: salary.asked.max,
+      salary_currency: salary.currency,
+      salary_period: salary.period,
+    }),
+    ...(contact && {
+      contact_name: contact.name,
+      contact_role: contact.role,
+      contact_email: contact.email,
+      contact_phone: contact.phone,
+      contact_url: contact.url,
+    }),
+  };
+  return Object.fromEntries(Object.entries(row).filter(([, value]) => value !== undefined));
+}
+
+/** The columns statusTransition() changes. */
+export function toStatusTransitionRow(moved: Application): ApplicationUpdateRow {
+  return {
+    status: moved.status,
+    status_changed_at: moved.statusChangedAt.toISOString(),
+    applied_at: moved.appliedAt?.toISOString() ?? null,
+    last_contact_at: moved.lastContactAt?.toISOString() ?? null,
+  };
+}
+
+export function statusEventToDomain(row: StatusEventRow): StatusEvent {
+  return {
+    status: oneOf(applicationStatuses, row.status, "status_event.status"),
+    occurredAt: new Date(row.occurred_at),
   };
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Toaster } from "@/ui/kit/sonner";
 import { messages } from "@/ui/messages";
 import { TimeZoneSync } from "@/ui/time-zone/TimeZoneSync";
 import "./globals.css";
@@ -26,6 +27,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col">
         <TimeZoneSync />
         {children}
+        <Toaster />
       </body>
     </html>
   );
