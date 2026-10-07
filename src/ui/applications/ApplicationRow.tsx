@@ -7,6 +7,7 @@ import { TableCell, TableRow } from "@/ui/kit/table";
 import { messages } from "@/ui/messages";
 import { type ApplicationActionHandlers, ApplicationActions } from "./ApplicationActions";
 import { type ChangeStatus, StatusTag } from "./StatusTag";
+import { WaitingDays } from "./WaitingDays";
 
 export type ApplicationRowActions = ApplicationActionHandlers & { changeStatus: ChangeStatus };
 
@@ -27,7 +28,6 @@ const secondLine = "block text-[13px] text-muted-foreground";
 const aboveRowLink = "relative z-10";
 
 export function ApplicationRow({ application, href, timeZone, now, actions }: ApplicationRowProps) {
-  const waiting = daysWithoutResponse(application, now);
   const workMode = application.workMode && t.workMode[application.workMode];
 
   return (
@@ -69,10 +69,7 @@ export function ApplicationRow({ application, href, timeZone, now, actions }: Ap
         </div>
       </TableCell>
       <TableCell className="text-right font-mono">
-        <span aria-hidden>{waiting === null ? t.waiting.none : t.waiting.days(waiting)}</span>
-        <span className="sr-only">
-          {waiting === null ? t.waiting.noneSpoken : t.waiting.daysSpoken(waiting)}
-        </span>
+        <WaitingDays days={daysWithoutResponse(application, now)} />
       </TableCell>
       <TableCell>
         <div className={aboveRowLink}>

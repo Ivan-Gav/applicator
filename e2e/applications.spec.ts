@@ -80,7 +80,8 @@ test("an application created through the form is listed, edited on its page, and
 
   const name = t.name({ companyName: "Initech", positionTitle: "Platform Engineer" });
   await row.getByRole("link", { name }).click();
-  await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Initech" })).toBeVisible();
+  await expect(page).toHaveTitle(new RegExp(`^${name}`));
   await expect(
     page.getByRole("textbox", { name: t.form.salary.amounts.advertised.to }),
   ).toHaveValue("70000");

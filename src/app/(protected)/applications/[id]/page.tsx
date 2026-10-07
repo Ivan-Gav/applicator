@@ -7,7 +7,7 @@ import { requestTimeZone } from "@/app/_utils/request-time-zone";
 import { currentUser } from "@/app/auth/_utils/current-user";
 import { applicationsPath } from "@/app/routes";
 import { applicationIdSchema } from "@/domain/application/schema";
-import { formatDay, isoDay } from "@/lib/date";
+import { ApplicationFacts } from "@/ui/applications/ApplicationFacts";
 import { ApplicationForm } from "@/ui/applications/ApplicationForm";
 import { StatusTag, StatusTagSize } from "@/ui/applications/StatusTag";
 import { StatusHistory } from "@/ui/applications/StatusHistory";
@@ -48,54 +48,40 @@ export default async function ApplicationPage({ params }: PageProps<"/applicatio
     requestTimeZone(),
   ]);
 
-  const day = (instant: Date) => (
-    <time dateTime={isoDay(instant, timeZone)}>{formatDay(instant, timeZone)}</time>
-  );
-
   return (
     <PageColumn width={ColumnWidth.Narrow}>
       <Link
         href={applicationsPath()}
-        className="self-start text-sm text-muted-foreground underline-offset-4 hover:underline"
+        className="self-start text-[13px] text-muted-foreground underline-offset-4 hover:underline"
       >
         {t.back}
       </Link>
-      <h1 className="text-2xl font-semibold tracking-tight">{t.name(application)}</h1>
+      <div className="flex flex-col gap-1">
+        <h1 className="text-[30px] leading-tight font-semibold">{application.companyName}</h1>
+        <p className="text-lg text-muted-foreground">{application.positionTitle}</p>
+      </div>
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-start gap-x-8 gap-y-3">
         <StatusTag
           application={application}
           changeStatus={changeApplicationStatus}
           size={StatusTagSize.Page}
         />
+        <ApplicationFacts application={application} timeZone={timeZone} now={new Date()} />
       </div>
 
-      <dl className="grid max-w-xl grid-cols-[auto_1fr] gap-x-6 gap-y-1 text-sm">
-        <dt className="text-muted-foreground">{t.page.appliedAt}</dt>
-        <dd>{application.appliedAt ? day(application.appliedAt) : t.notApplied}</dd>
-        <dt className="text-muted-foreground">{t.page.lastContactAt}</dt>
-        <dd>{application.lastContactAt ? day(application.lastContactAt) : t.page.noContact}</dd>
-        {application.archivedAt && (
-          <>
-            <dt className="text-muted-foreground">{t.page.archivedAt}</dt>
-            <dd>{day(application.archivedAt)}</dd>
-          </>
-        )}
-      </dl>
+      <StatusHistory events={history} timeZone={timeZone} />
 
-      <div className="flex flex-col gap-10">
-        <section aria-labelledby="application-details-title" className="flex flex-col gap-4">
-          <h2 id="application-details-title" className="text-lg font-medium">
-            {t.page.details}
-          </h2>
-          <ApplicationForm
-            application={application}
-            save={updateApplication.bind(null, application.id)}
-            backHref={applicationsPath()}
-          />
-        </section>
-        <StatusHistory events={history} timeZone={timeZone} />
-      </div>
+      <section aria-labelledby="application-details-title" className="flex flex-col gap-4">
+        <h2 id="application-details-title" className="text-xl font-medium">
+          {t.page.details}
+        </h2>
+        <ApplicationForm
+          application={application}
+          save={updateApplication.bind(null, application.id)}
+          backHref={applicationsPath()}
+        />
+      </section>
     </PageColumn>
   );
 }

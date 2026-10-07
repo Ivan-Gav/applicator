@@ -10,6 +10,8 @@ import { messages } from "@/ui/messages";
 export type ContactFieldsProps = {
   register: UseFormRegister<CreateApplicationInput>;
   errors: FieldErrors<CreateApplicationInput>["contact"];
+  /** Shown beside the title, e.g. "Jane Doe · Recruiter"; empty for none. */
+  summary: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 };
@@ -24,21 +26,34 @@ const inputProps = {
   url: { type: "url", inputMode: "url", autoComplete: "off" },
 } as const satisfies Record<ContactPart, object>;
 
-export function ContactFields({ register, errors, open, onOpenChange }: ContactFieldsProps) {
+export function ContactFields({
+  register,
+  errors,
+  summary,
+  open,
+  onOpenChange,
+}: ContactFieldsProps) {
   return (
     <details
       open={open}
       onToggle={(event) => onOpenChange(event.currentTarget.open)}
       className="rounded-lg border px-4 py-3"
     >
-      <summary className="cursor-pointer font-medium">{t.title}</summary>
+      <summary className="cursor-pointer font-medium">
+        {t.title}
+        {summary && <span className="ml-2 font-normal text-muted-foreground">{summary}</span>}
+      </summary>
       <div className="mt-4 grid gap-5 sm:grid-cols-2">
         {contactParts.map((part) => {
           const id = `contact-${part}`;
           const errorId = `${id}-error`;
           const invalid = errors?.[part] !== undefined;
           return (
-            <Field key={part} data-invalid={invalid ? true : undefined}>
+            <Field
+              key={part}
+              data-invalid={invalid ? true : undefined}
+              className={part === "url" ? "sm:col-span-2" : undefined}
+            >
               <FieldLabel htmlFor={id}>{t.labels[part]}</FieldLabel>
               <Input
                 id={id}

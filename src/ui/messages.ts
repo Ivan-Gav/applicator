@@ -123,6 +123,7 @@ export const messages = {
       lastContactAt: "Last contact",
       noContact: "None yet",
       archivedAt: "Archived",
+      waiting: "Waiting",
       details: "Details",
       history: "Status history",
     },
@@ -213,6 +214,8 @@ export const messages = {
       },
       contact: {
         title: "Contact",
+        // "Jane Doe · Recruiter", from whichever of the two is known.
+        summary: (parts: readonly string[]) => parts.join(" · "),
         labels: {
           name: "Contact name",
           role: "Contact role",

@@ -433,6 +433,19 @@ describe("ApplicationForm editing an application", () => {
     expect(textbox(t.contact.labels.name)).toHaveValue("Jane Doe");
   });
 
+  it("sums up the contact by name and role, as they are typed", async () => {
+    const { user } = renderEdit();
+    const summary = screen.getByText(t.contact.title, { selector: "summary" });
+
+    expect(summary).toHaveTextContent(`${t.contact.title}${t.contact.summary(["Jane Doe"])}`);
+
+    await user.type(textbox(t.contact.labels.role), "Recruiter");
+
+    expect(summary).toHaveTextContent(
+      `${t.contact.title}${t.contact.summary(["Jane Doe", "Recruiter"])}`,
+    );
+  });
+
   function renderWithPeriodAlone(period: SalaryPeriod) {
     const noAmount = { min: null, max: null };
     renderForm(

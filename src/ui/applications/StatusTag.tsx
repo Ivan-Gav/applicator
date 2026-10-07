@@ -20,6 +20,7 @@ import {
   DropdownMenuTrigger,
 } from "@/ui/kit/dropdown-menu";
 import { messages } from "@/ui/messages";
+import { StatusSwatch } from "./StatusSwatch";
 import styles from "./StatusTag.module.css";
 
 /** Resolves with `null` once stored, or with why the change was refused. */
@@ -118,7 +119,7 @@ export function StatusTag({
             <DropdownMenuLabel id={menuTitleId}>{s.menuTitle}</DropdownMenuLabel>
             {options.map((to) => (
               <DropdownMenuItem key={to} onSelect={() => move(to)}>
-                <span aria-hidden data-status={to} className={styles.swatch} />
+                <StatusSwatch status={to} />
                 {to === status ? s.again(t.status[to]) : t.status[to]}
               </DropdownMenuItem>
             ))}

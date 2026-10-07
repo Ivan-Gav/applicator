@@ -5,7 +5,7 @@ import Link from "next/link";
 import { unstable_rethrow } from "next/navigation";
 import { useState, useTransition } from "react";
 import { flushSync } from "react-dom";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import {
   type Application,
@@ -78,6 +78,15 @@ export function ApplicationForm({ save, backHref, application }: ApplicationForm
   const unchanged = editing && !isDirty;
   const salaryShown = salaryOpen || errors.salary !== undefined;
   const contactShown = contactOpen || errors.contact !== undefined;
+  const contactNameAndRole = useWatch({
+    control: form.control,
+    name: ["contact.name", "contact.role"],
+  });
+  const contactSummary = t.contact.summary(
+    contactNameAndRole.filter(
+      (part): part is string => typeof part === "string" && part.trim() !== "",
+    ),
+  );
 
   function showRejection({ invalidFields }: ApplicationRejection) {
     const shown = [
@@ -147,11 +156,7 @@ export function ApplicationForm({ save, backHref, application }: ApplicationForm
   }
 
   return (
-    <form
-      onSubmit={(event) => void submit(event)}
-      noValidate
-      className="flex max-w-xl flex-col gap-5"
-    >
+    <form onSubmit={(event) => void submit(event)} noValidate className="flex flex-col gap-5">
       <Field data-invalid={errors.companyName ? true : undefined}>
         <FieldLabel htmlFor="companyName">{t.labels.companyName}</FieldLabel>
         <Input
@@ -298,29 +303,31 @@ export function ApplicationForm({ save, backHref, application }: ApplicationForm
         </Field>
       </div>
 
-      <Field data-invalid={errors.sourceUrl ? true : undefined}>
-        <FieldLabel htmlFor="sourceUrl">{t.labels.sourceUrl}</FieldLabel>
-        <Input
-          id="sourceUrl"
-          type="url"
-          inputMode="url"
-          {...describedBy("sourceUrl")}
-          {...form.register("sourceUrl")}
-        />
-        {error("sourceUrl")}
-      </Field>
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Field data-invalid={errors.sourceUrl ? true : undefined}>
+          <FieldLabel htmlFor="sourceUrl">{t.labels.sourceUrl}</FieldLabel>
+          <Input
+            id="sourceUrl"
+            type="url"
+            inputMode="url"
+            {...describedBy("sourceUrl")}
+            {...form.register("sourceUrl")}
+          />
+          {error("sourceUrl")}
+        </Field>
 
-      <Field data-invalid={errors.applicationUrl ? true : undefined}>
-        <FieldLabel htmlFor="applicationUrl">{t.labels.applicationUrl}</FieldLabel>
-        <Input
-          id="applicationUrl"
-          type="url"
-          inputMode="url"
-          {...describedBy("applicationUrl")}
-          {...form.register("applicationUrl")}
-        />
-        {error("applicationUrl")}
-      </Field>
+        <Field data-invalid={errors.applicationUrl ? true : undefined}>
+          <FieldLabel htmlFor="applicationUrl">{t.labels.applicationUrl}</FieldLabel>
+          <Input
+            id="applicationUrl"
+            type="url"
+            inputMode="url"
+            {...describedBy("applicationUrl")}
+            {...form.register("applicationUrl")}
+          />
+          {error("applicationUrl")}
+        </Field>
+      </div>
 
       <Field data-invalid={errors.notes ? true : undefined}>
         <FieldLabel htmlFor="notes">{t.labels.notes}</FieldLabel>
@@ -337,6 +344,7 @@ export function ApplicationForm({ save, backHref, application }: ApplicationForm
 
       <ContactFields
         register={form.register}
+        summary={contactSummary}
         errors={errors.contact}
         open={contactShown}
         onOpenChange={setContactOpen}

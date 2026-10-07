@@ -13,7 +13,9 @@ export const metadata: Metadata = {
 export default function NewApplicationPage() {
   return (
     <PageColumn width={ColumnWidth.Narrow}>
-      <h1 className="text-2xl font-semibold tracking-tight">{messages.applications.form.title}</h1>
+      <h1 className="text-[30px] leading-tight font-semibold">
+        {messages.applications.form.title}
+      </h1>
       <ApplicationForm save={createApplication} backHref={routes.applications} />
     </PageColumn>
   );

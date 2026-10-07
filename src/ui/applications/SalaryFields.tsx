@@ -72,6 +72,7 @@ export function SalaryFields({ register, errors, open, onOpenChange }: SalaryFie
                         id={id}
                         inputMode="numeric"
                         autoComplete="off"
+                        className="font-mono"
                         {...describedBy(invalid, errorId, true)}
                         {...register(`salary.${amount}.${end}`, {
                           setValueAs: amountValue,
