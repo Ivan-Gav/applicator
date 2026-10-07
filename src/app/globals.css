@@ -33,6 +33,8 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-destructive-solid: var(--destructive-solid);
+  --color-destructive-solid-foreground: var(--destructive-solid-foreground);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -75,6 +77,9 @@
   --accent: #e7efd3; /* row hover, menu item hover */
   --accent-foreground: #0e2d0c;
   --destructive: #b91c1e; /* 4.5:1 on its own 10% tint */
+  /* fill of the destructive button, in both themes: white on it is 6.5:1 */
+  --destructive-solid: #b91c1e;
+  --destructive-solid-foreground: #ffffff;
 
   /* lines */
   --border: #c3d7b5; /* decorative dividers only */
@@ -103,7 +108,7 @@
   --sidebar-border: #c3d7b5;
   --sidebar-ring: #266210;
 
-  /* status tags: bg / fg / border ("none" = no outline) */
+  /* status tags: bg / fg / border (transparent = no outline) */
   --status-draft-bg: transparent;
   --status-draft-fg: #496341;
   --status-draft-border: #496341;
@@ -112,7 +117,7 @@
   --status-applied-border: #4e8a2e;
   --status-screening-bg: #3f7a24;
   --status-screening-fg: #f5fae4;
-  --status-screening-border: none;
+  --status-screening-border: transparent;
   --status-interview-bg: #90b800;
   --status-interview-fg: #052203;
   --status-interview-border: #052203;
@@ -121,7 +126,7 @@
   --status-offer-border: #e1e100;
   --status-rejected-bg: #e1e4dd;
   --status-rejected-fg: #50544d;
-  --status-rejected-border: none;
+  --status-rejected-border: transparent;
   --status-withdrawn-bg: transparent;
   --status-withdrawn-fg: #5f5e56;
   --status-withdrawn-border: #a09f96;
@@ -176,16 +181,16 @@
   --status-applied-border: #5e9e1e;
   --status-screening-bg: #2f6a17;
   --status-screening-fg: #f2f7dc;
-  --status-screening-border: none;
+  --status-screening-border: transparent;
   --status-interview-bg: #90b800;
   --status-interview-fg: #14200a;
-  --status-interview-border: none;
+  --status-interview-border: transparent;
   --status-offer-bg: #e1e100;
   --status-offer-fg: #14200a;
-  --status-offer-border: none;
+  --status-offer-border: transparent;
   --status-rejected-bg: #2b2f2a;
   --status-rejected-fg: #b5b9b1;
-  --status-rejected-border: none;
+  --status-rejected-border: transparent;
   --status-withdrawn-bg: transparent;
   --status-withdrawn-fg: #a6a59c;
   --status-withdrawn-border: #57564e;

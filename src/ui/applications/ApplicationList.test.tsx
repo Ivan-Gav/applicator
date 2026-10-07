@@ -10,6 +10,7 @@ const t = messages.applications;
 // Midnight in Berlin on 1 September; still 31 August in UTC.
 const appliedAt = new Date("2026-08-31T22:00:00.000Z");
 const timeZone = "Europe/Berlin";
+const now = new Date("2026-09-15T10:00:00.000Z");
 
 const actions = {
   changeStatus: vi.fn(),
@@ -28,6 +29,7 @@ function renderList(applications: Application[], archived = false) {
       archivedHref="/list?view=archived"
       applicationHref={(id) => `/list/${id}`}
       timeZone={timeZone}
+      now={now}
       actions={actions}
     />,
   );
@@ -48,15 +50,17 @@ describe("ApplicationList", () => {
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
 
-  it("shows date, company, position, city, status and actions, and nothing else", () => {
+  it("shows date, company and position, city and work mode, status and waiting, and nothing else", () => {
     renderList([
       anApplication({
         id: "00000000-0000-4000-8000-0000000000a2",
         companyName: "Globex",
         positionTitle: "Platform Engineer",
         city: "Berlin",
+        workMode: "hybrid",
         status: "interview",
         appliedAt,
+        lastContactAt: new Date("2026-09-01T10:00:00.000Z"),
         notes: "Not for the row",
         salary: {
           advertised: { min: 60_000, max: 70_000 },
@@ -77,9 +81,9 @@ describe("ApplicationList", () => {
     ).toEqual([
       t.columns.appliedAt,
       t.columns.company,
-      t.columns.position,
       t.columns.city,
       t.columns.status,
+      t.columns.waiting,
       t.columns.actions,
     ]);
 
@@ -88,38 +92,68 @@ describe("ApplicationList", () => {
       throw new Error("expected two application rows");
     }
     const cells = within(newest).getAllByRole("cell");
-    expect(cells.slice(0, 5).map((cell) => cell.textContent)).toEqual([
+    expect(cells.slice(0, 3).map((cell) => cell.textContent)).toEqual([
       formatDay(appliedAt, timeZone),
-      "Globex",
-      "Platform Engineer",
-      "Berlin",
-      t.status.interview,
+      "GlobexPlatform Engineer",
+      `Berlin${t.workMode.hybrid}`,
     ]);
     expect(within(newest).getByText(formatDay(appliedAt, timeZone))).toHaveAttribute(
       "datetime",
       "2026-09-01",
     );
+    expect(
+      within(newest).getByRole("button", {
+        name: t.statusChange.trigger(
+          t.status.interview,
+          t.name({ companyName: "Globex", positionTitle: "Platform Engineer" }),
+        ),
+      }),
+    ).toBeVisible();
+    expect(cells[4]).toHaveTextContent(t.waiting.daysSpoken(14));
     expect(newest).not.toHaveTextContent("Not for the row");
     expect(newest).not.toHaveTextContent("60,000");
     expect(within(oldest).getAllByRole("cell")[0]).toHaveTextContent(t.notApplied);
   });
 
-  it("links each row's edit action to its application's page", () => {
+  it("counts waiting days in one format, and none for a closed application", () => {
+    renderList([
+      anApplication({
+        id: "00000000-0000-4000-8000-0000000000a3",
+        companyName: "Initech",
+        appliedAt: new Date("2026-07-01T10:00:00.000Z"),
+      }),
+      anApplication({ companyName: "Hooli", status: "rejected" }),
+    ]);
+
+    const [waiting, closed] = rowsOf(screen.getByRole("table", { name: t.title }));
+    expect(within(waiting!).getAllByRole("cell")[4]).toHaveTextContent(t.waiting.days(76));
+    expect(within(closed!).getAllByRole("cell")[4]).toHaveTextContent(t.waiting.none);
+    expect(within(closed!).getAllByRole("cell")[4]).toHaveTextContent(t.waiting.noneSpoken);
+  });
+
+  it("opens an application from its row, through one link named after it", () => {
     renderList([anApplication({ id: "00000000-0000-4000-8000-0000000000a7" })]);
     const name = t.name({ companyName: "Acme", positionTitle: "Engineer" });
 
+    expect(screen.getByRole("link", { name })).toHaveAttribute(
+      "href",
+      "/list/00000000-0000-4000-8000-0000000000a7",
+    );
     expect(
-      screen.getByRole("link", { name: t.actions.label(t.actions.edit, name) }),
-    ).toHaveAttribute("href", "/list/00000000-0000-4000-8000-0000000000a7");
+      screen.queryByRole("link", { name: t.actions.label("Edit", name) }),
+    ).not.toBeInTheDocument();
   });
 
   it("offers each row's actions named after its application", () => {
     renderList([anApplication({ companyName: "Globex", positionTitle: "SRE" })]);
     const name = t.name({ companyName: "Globex", positionTitle: "SRE" });
 
-    for (const action of [t.actions.changeStatus, t.actions.archive, t.actions.delete]) {
+    for (const action of [t.actions.archive, t.actions.delete]) {
       expect(screen.getByRole("button", { name: t.actions.label(action, name) })).toBeVisible();
     }
+    expect(
+      screen.getByRole("button", { name: t.statusChange.trigger(t.status.applied, name) }),
+    ).toBeVisible();
   });
 
   it("marks the active view as current and links to the archived one", () => {

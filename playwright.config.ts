@@ -14,6 +14,8 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: isCI,
   retries: isCI ? 2 : 0,
+  // A cold `next dev` compiles a server action on its first call.
+  expect: { timeout: isCI ? 5_000 : 10_000 },
   reporter: isCI ? [["html", { open: "never" }], ["github"]] : [["list"]],
   use: {
     baseURL,

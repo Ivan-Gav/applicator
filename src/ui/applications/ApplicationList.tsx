@@ -4,8 +4,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/ui/kit/button";
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/ui/kit/table";
 import { messages } from "@/ui/messages";
-import type { ApplicationActionHandlers } from "./ApplicationActions";
-import { ApplicationRow } from "./ApplicationRow";
+import { ApplicationRow, type ApplicationRowActions } from "./ApplicationRow";
 
 export type ApplicationListProps = {
   applications: readonly Application[];
@@ -17,7 +16,9 @@ export type ApplicationListProps = {
   applicationHref: (id: string) => string;
   // The viewer's zone; dates show the day they fall on there.
   timeZone: string;
-  actions: ApplicationActionHandlers;
+  // What "waiting" is counted up to.
+  now: Date;
+  actions: ApplicationRowActions;
 };
 
 const t = messages.applications;
@@ -30,6 +31,7 @@ export function ApplicationList({
   archivedHref,
   applicationHref,
   timeZone,
+  now,
   actions,
 }: ApplicationListProps) {
   const empty = archived ? t.emptyArchived : t.empty;
@@ -70,31 +72,39 @@ export function ApplicationList({
           <p className="max-w-prose text-muted-foreground">{empty.description}</p>
         </section>
       ) : (
-        <Table aria-label={archived ? t.views.archived : t.title}>
-          <TableHeader>
-            <TableRow>
-              <TableHead scope="col">{t.columns.appliedAt}</TableHead>
-              <TableHead scope="col">{t.columns.company}</TableHead>
-              <TableHead scope="col">{t.columns.position}</TableHead>
-              <TableHead scope="col">{t.columns.city}</TableHead>
-              <TableHead scope="col">{t.columns.status}</TableHead>
-              <TableHead scope="col" className="text-right">
-                {t.columns.actions}
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {applications.map((application) => (
-              <ApplicationRow
-                key={application.id}
-                application={application}
-                href={applicationHref(application.id)}
-                timeZone={timeZone}
-                actions={actions}
-              />
-            ))}
-          </TableBody>
-        </Table>
+        <div className="overflow-hidden rounded-lg border bg-card">
+          <Table
+            aria-label={archived ? t.views.archived : t.title}
+            className="[&_td]:px-3 [&_td]:py-2.5 [&_th]:px-3"
+          >
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead scope="col">{t.columns.appliedAt}</TableHead>
+                <TableHead scope="col">{t.columns.company}</TableHead>
+                <TableHead scope="col">{t.columns.city}</TableHead>
+                <TableHead scope="col">{t.columns.status}</TableHead>
+                <TableHead scope="col" className="text-right">
+                  {t.columns.waiting}
+                </TableHead>
+                <TableHead scope="col">
+                  <span className="sr-only">{t.columns.actions}</span>
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {applications.map((application) => (
+                <ApplicationRow
+                  key={application.id}
+                  application={application}
+                  href={applicationHref(application.id)}
+                  timeZone={timeZone}
+                  now={now}
+                  actions={actions}
+                />
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
     </div>
   );

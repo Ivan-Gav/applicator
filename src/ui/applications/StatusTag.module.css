@@ -1,0 +1,141 @@
+/* Status colours come from the --status-* tokens in globals.css. */
+
+.tag {
+  --corner: 5px;
+  --tag-border-width: 1px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 108px;
+  padding: 6px 9px;
+  font-size: 12px;
+  line-height: 1.2;
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--tag-fg);
+  border: var(--tag-border-width) solid var(--tag-border);
+  /* clip-path also cuts the border at the two clipped corners; the two
+     gradients redraw it along each diagonal, in the same colour and width. */
+  background:
+    linear-gradient(
+      135deg,
+      transparent 50%,
+      var(--tag-border) 50% calc(50% + var(--tag-border-width)),
+      transparent 0
+    )
+    0 0 / var(--corner) var(--corner) no-repeat border-box,
+    linear-gradient(
+      -45deg,
+      transparent 50%,
+      var(--tag-border) 50% calc(50% + var(--tag-border-width)),
+      transparent 0
+    )
+    100% 100% / var(--corner) var(--corner) no-repeat border-box,
+    var(--tag-bg);
+  clip-path: polygon(
+    var(--corner) 0,
+    100% 0,
+    100% calc(100% - var(--corner)),
+    calc(100% - var(--corner)) 100%,
+    0 100%,
+    0 var(--corner)
+  );
+}
+
+.page {
+  min-width: 120px;
+}
+
+button.tag {
+  cursor: pointer;
+}
+
+/* clip-path cuts any outline drawn outside the box, so focus is drawn inside. */
+button.tag:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: -4px;
+}
+
+/* A colour square standing for a status, e.g. in the status menu. */
+.swatch {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  background: var(--tag-bg);
+  border: 1.5px solid var(--tag-border);
+}
+
+.tag[data-status="draft"],
+.swatch[data-status="draft"] {
+  --tag-bg: var(--status-draft-bg);
+  --tag-fg: var(--status-draft-fg);
+  --tag-border: var(--status-draft-border);
+}
+
+.tag[data-status="draft"] {
+  border-style: dashed;
+}
+
+.tag[data-status="applied"],
+.swatch[data-status="applied"] {
+  --tag-bg: var(--status-applied-bg);
+  --tag-fg: var(--status-applied-fg);
+  --tag-border: var(--status-applied-border);
+}
+
+.tag[data-status="applied"] {
+  --tag-border-width: 1.5px;
+  font-weight: 600;
+}
+
+.tag[data-status="screening"],
+.swatch[data-status="screening"] {
+  --tag-bg: var(--status-screening-bg);
+  --tag-fg: var(--status-screening-fg);
+  --tag-border: var(--status-screening-border);
+}
+
+.tag[data-status="screening"] {
+  font-weight: 600;
+}
+
+.tag[data-status="interview"],
+.swatch[data-status="interview"] {
+  --tag-bg: var(--status-interview-bg);
+  --tag-fg: var(--status-interview-fg);
+  --tag-border: var(--status-interview-border);
+}
+
+.tag[data-status="interview"] {
+  --tag-border-width: 1.5px;
+  font-weight: 700;
+}
+
+.tag[data-status="offer"],
+.swatch[data-status="offer"] {
+  --tag-bg: var(--status-offer-bg);
+  --tag-fg: var(--status-offer-fg);
+  --tag-border: var(--status-offer-border);
+}
+
+.tag[data-status="offer"] {
+  --tag-border-width: 2px;
+  font-weight: 700;
+}
+
+.tag[data-status="rejected"],
+.swatch[data-status="rejected"] {
+  --tag-bg: var(--status-rejected-bg);
+  --tag-fg: var(--status-rejected-fg);
+  --tag-border: var(--status-rejected-border);
+}
+
+.tag[data-status="withdrawn"],
+.swatch[data-status="withdrawn"] {
+  --tag-bg: var(--status-withdrawn-bg);
+  --tag-fg: var(--status-withdrawn-fg);
+  --tag-border: var(--status-withdrawn-border);
+}

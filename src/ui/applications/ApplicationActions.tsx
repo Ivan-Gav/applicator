@@ -1,7 +1,5 @@
 "use client";
 
-import { ArchiveIcon, ArchiveRestoreIcon, PencilIcon, Trash2Icon } from "lucide-react";
-import Link from "next/link";
 import { useState, useTransition } from "react";
 import type { Application } from "@/domain/application/model";
 import {
@@ -15,13 +13,14 @@ import {
   AlertDialogTrigger,
 } from "@/ui/kit/alert-dialog";
 import { awaitingHydrationClass, useHydrated } from "@/ui/hooks/use-hydrated";
+import { ArchiveIcon } from "@/ui/icons/ArchiveIcon";
+import { DeleteIcon } from "@/ui/icons/DeleteIcon";
+import { RestoreIcon } from "@/ui/icons/RestoreIcon";
 import { Button } from "@/ui/kit/button";
 import { cn } from "@/lib/utils";
 import { messages } from "@/ui/messages";
-import { type ChangeStatus, StatusChangeDialog } from "./StatusChangeDialog";
 
 export type ApplicationActionHandlers = {
-  changeStatus: ChangeStatus;
   archive: (id: string) => Promise<void>;
   unarchive: (id: string) => Promise<void>;
   delete: (id: string) => Promise<void>;
@@ -29,16 +28,15 @@ export type ApplicationActionHandlers = {
 
 export type ApplicationActionsProps = {
   application: Application;
-  editHref: string;
   actions: ApplicationActionHandlers;
 };
 
 const t = messages.applications.actions;
 const d = messages.applications.deleteDialog;
-// The destructive variant's text falls short of 4.5:1 on its own tint.
-const destructiveText = "text-red-700 dark:text-red-300";
+const iconButton =
+  "rounded-full text-muted-foreground hover:bg-muted hover:text-foreground dark:hover:bg-muted";
 
-export function ApplicationActions({ application, editHref, actions }: ApplicationActionsProps) {
+export function ApplicationActions({ application, actions }: ApplicationActionsProps) {
   const name = messages.applications.name(application);
   const archived = application.archivedAt !== null;
   const [failed, setFailed] = useState(false);
@@ -76,51 +74,48 @@ export function ApplicationActions({ application, editHref, actions }: Applicati
 
   return (
     <div className="flex flex-col items-end gap-1">
-      <div className="flex items-center gap-2">
-        <Button asChild variant="outline" size="sm">
-          <Link href={editHref} aria-label={t.label(t.edit, name)}>
-            <PencilIcon aria-hidden />
-            {t.edit}
-          </Link>
-        </Button>
-        <StatusChangeDialog application={application} changeStatus={actions.changeStatus} />
+      <div className="flex items-center gap-1">
         <Button
-          variant="outline"
-          size="sm"
+          variant="ghost"
+          size="icon"
           disabled={archiving || !hydrated}
-          className={hydrated ? undefined : awaitingHydrationClass}
+          className={cn(iconButton, !hydrated && awaitingHydrationClass)}
           aria-label={t.label(archiveLabel, name)}
           onClick={toggleArchived}
         >
-          {archived ? <ArchiveRestoreIcon aria-hidden /> : <ArchiveIcon aria-hidden />}
-          {archiveLabel}
+          {archived ? <RestoreIcon className="size-5" /> : <ArchiveIcon className="size-5" />}
         </Button>
         <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
           <AlertDialogTrigger asChild>
             <Button
-              variant="destructive"
-              size="sm"
+              variant="ghost"
+              size="icon"
               disabled={!hydrated}
-              className={cn("ml-2", destructiveText, !hydrated && awaitingHydrationClass)}
+              className={cn(
+                iconButton,
+                "hover:text-destructive",
+                !hydrated && awaitingHydrationClass,
+              )}
               aria-label={t.label(t.delete, name)}
             >
-              <Trash2Icon aria-hidden />
-              {t.delete}
+              <DeleteIcon className="size-5" />
             </Button>
           </AlertDialogTrigger>
-          <AlertDialogContent>
+          <AlertDialogContent
+            // A click outside cancels, as Cancel does, unless the deletion is under way.
+            onOverlayClick={() => {
+              if (!deleting) {
+                setConfirmOpen(false);
+              }
+            }}
+          >
             <AlertDialogHeader>
               <AlertDialogTitle>{d.title}</AlertDialogTitle>
               <AlertDialogDescription>{d.description(name)}</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>{d.cancel}</AlertDialogCancel>
-              <Button
-                variant="destructive"
-                className={destructiveText}
-                disabled={deleting}
-                onClick={confirmDelete}
-              >
+              <Button variant="destructive" disabled={deleting} onClick={confirmDelete}>
                 {deleting ? d.deleting : d.confirm}
               </Button>
             </AlertDialogFooter>

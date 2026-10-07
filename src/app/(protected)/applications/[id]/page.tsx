@@ -9,8 +9,7 @@ import { applicationsPath } from "@/app/routes";
 import { applicationIdSchema } from "@/domain/application/schema";
 import { formatDay, isoDay } from "@/lib/date";
 import { ApplicationForm } from "@/ui/applications/ApplicationForm";
-import { StatusBadge } from "@/ui/applications/StatusBadge";
-import { StatusChangeDialog } from "@/ui/applications/StatusChangeDialog";
+import { StatusTag, StatusTagSize } from "@/ui/applications/StatusTag";
 import { StatusHistory } from "@/ui/applications/StatusHistory";
 import { messages } from "@/ui/messages";
 import { ColumnWidth, PageColumn } from "@/ui/shell/PageColumn";
@@ -64,8 +63,11 @@ export default async function ApplicationPage({ params }: PageProps<"/applicatio
       <h1 className="text-2xl font-semibold tracking-tight">{t.name(application)}</h1>
 
       <div className="flex flex-wrap items-center gap-3">
-        <StatusBadge status={application.status} />
-        <StatusChangeDialog application={application} changeStatus={changeApplicationStatus} />
+        <StatusTag
+          application={application}
+          changeStatus={changeApplicationStatus}
+          size={StatusTagSize.Page}
+        />
       </div>
 
       <dl className="grid max-w-xl grid-cols-[auto_1fr] gap-x-6 gap-y-1 text-sm">

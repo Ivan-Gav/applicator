@@ -45,6 +45,11 @@ export function nextStatuses(from: ApplicationStatus): readonly ApplicationStatu
   return applicationStatuses.filter((to) => isStatusTransitionAllowed(from, to));
 }
 
+/** A final status allows no further move: the application is closed. */
+export function isFinalStatus(status: ApplicationStatus): boolean {
+  return !hasAllowedStatusTransitions(status);
+}
+
 /**
  * `at` is when the new status was entered. A status change also counts as a
  * contact, so `lastContactAt` becomes `at` as well.

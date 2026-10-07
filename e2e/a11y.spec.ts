@@ -165,28 +165,44 @@ test.describe("with a stored session", () => {
     await expectNoViolations(page);
   });
 
-  for (const { action, dialog } of [
-    { action: t.actions.changeStatus, dialog: { role: "dialog", name: t.statusChange.title } },
-    { action: t.actions.delete, dialog: { role: "alertdialog", name: t.deleteDialog.title } },
-  ] as const) {
-    test(`${action} dialog has no accessibility violations`, async ({ page }) => {
-      const companyName = uniqueCompany("Dialog Corp");
-      await seedApplication(page.request, {
-        companyName,
-        positionTitle: "Engineer",
-        status: "applied",
-      });
-      await page.goto(routes.applications);
-      await page
-        .getByRole("button", {
-          name: t.actions.label(action, t.name({ companyName, positionTitle: "Engineer" })),
-        })
-        .click();
-      await expect(page.getByRole(dialog.role, { name: dialog.name })).toBeVisible();
-
-      await expectNoViolations(page);
+  test("status menu has no accessibility violations", async ({ page }) => {
+    const companyName = uniqueCompany("Menu Corp");
+    await seedApplication(page.request, {
+      companyName,
+      positionTitle: "Engineer",
+      status: "interview",
     });
-  }
+    await page.goto(routes.applications);
+    await page
+      .getByRole("button", {
+        name: t.statusChange.trigger(
+          t.status.interview,
+          t.name({ companyName, positionTitle: "Engineer" }),
+        ),
+      })
+      .click();
+    await expect(page.getByRole("menu")).toBeVisible();
+
+    await expectNoViolations(page);
+  });
+
+  test("delete dialog has no accessibility violations", async ({ page }) => {
+    const companyName = uniqueCompany("Dialog Corp");
+    await seedApplication(page.request, {
+      companyName,
+      positionTitle: "Engineer",
+      status: "applied",
+    });
+    await page.goto(routes.applications);
+    await page
+      .getByRole("button", {
+        name: t.actions.label(t.actions.delete, t.name({ companyName, positionTitle: "Engineer" })),
+      })
+      .click();
+    await expect(page.getByRole("alertdialog", { name: t.deleteDialog.title })).toBeVisible();
+
+    await expectNoViolations(page);
+  });
 
   // With the salary and contact sections open, as stored values open them.
   test("application page has no accessibility violations", async ({ page }) => {
@@ -210,10 +226,10 @@ test.describe("with a stored session", () => {
     const id = await seedApplication(page.request, application);
     await page.goto(applicationPath(id));
     // Typing before hydration would be overwritten by it. Saving stays disabled
-    // until something changes, so the status action is the sign of hydration.
+    // until something changes, so the status tag is the sign of hydration.
     await expect(
       page.getByRole("button", {
-        name: t.actions.label(t.statusChange.title, t.name(application)),
+        name: t.statusChange.trigger(t.status.draft, t.name(application)),
       }),
     ).toBeEnabled();
     await page.getByRole("textbox", { name: form.labels.companyName }).fill("");

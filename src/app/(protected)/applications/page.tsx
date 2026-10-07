@@ -59,6 +59,7 @@ export default async function ApplicationsPage({ searchParams }: PageProps<"/app
         archivedHref={applicationsPath(ApplicationsView.Archived)}
         applicationHref={applicationPath}
         timeZone={timeZone}
+        now={new Date()}
         actions={actions}
       />
     </PageColumn>

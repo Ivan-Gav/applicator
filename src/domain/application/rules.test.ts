@@ -3,6 +3,7 @@ import { anApplication } from "@/test/application.fixture";
 import { type ApplicationStatus, SalaryRangeKind } from "./model";
 import {
   IllegalStatusTransitionError,
+  isFinalStatus,
   isStatusTransitionAllowed,
   daysWithoutResponse,
   nextStatuses,
@@ -84,6 +85,16 @@ describe("nextStatuses", () => {
 
   it.each(["rejected", "withdrawn"] as const)("offers nothing from %s", (terminal) => {
     expect(nextStatuses(terminal)).toEqual([]);
+  });
+});
+
+describe("isFinalStatus", () => {
+  it.each(allStatuses)("calls %s final exactly when it offers no move", (status) => {
+    expect(isFinalStatus(status)).toBe(nextStatuses(status).length === 0);
+  });
+
+  it.each(["rejected", "withdrawn"] as const)("calls %s final", (status) => {
+    expect(isFinalStatus(status)).toBe(true);
   });
 });
 

@@ -1,9 +1,14 @@
+import Link from "next/link";
 import type { Application } from "@/domain/application/model";
+import { daysWithoutResponse, isFinalStatus } from "@/domain/application/rules";
 import { formatDay, isoDay } from "@/lib/date";
+import { cn } from "@/lib/utils";
 import { TableCell, TableRow } from "@/ui/kit/table";
 import { messages } from "@/ui/messages";
 import { type ApplicationActionHandlers, ApplicationActions } from "./ApplicationActions";
-import { StatusBadge } from "./StatusBadge";
+import { type ChangeStatus, StatusTag } from "./StatusTag";
+
+export type ApplicationRowActions = ApplicationActionHandlers & { changeStatus: ChangeStatus };
 
 export type ApplicationRowProps = {
   // The whole record, not only what the row shows.
@@ -11,31 +16,68 @@ export type ApplicationRowProps = {
   href: string;
   // The viewer's zone; dates show the day they fall on there.
   timeZone: string;
-  actions: ApplicationActionHandlers;
+  // What "waiting" is counted up to.
+  now: Date;
+  actions: ApplicationRowActions;
 };
 
 const t = messages.applications;
+const secondLine = "block text-[13px] text-muted-foreground";
+// Lifts a control above the link stretched over the row.
+const aboveRowLink = "relative z-10";
 
-export function ApplicationRow({ application, href, timeZone, actions }: ApplicationRowProps) {
+export function ApplicationRow({ application, href, timeZone, now, actions }: ApplicationRowProps) {
+  const waiting = daysWithoutResponse(application, now);
+  const workMode = application.workMode && t.workMode[application.workMode];
+
   return (
-    <TableRow>
+    <TableRow className="relative hover:bg-accent">
       <TableCell>
         {application.appliedAt ? (
-          <time dateTime={isoDay(application.appliedAt, timeZone)}>
+          <time dateTime={isoDay(application.appliedAt, timeZone)} className="font-mono">
             {formatDay(application.appliedAt, timeZone)}
           </time>
         ) : (
           <span className="text-muted-foreground">{t.notApplied}</span>
         )}
       </TableCell>
-      <TableCell className="font-medium">{application.companyName}</TableCell>
-      <TableCell>{application.positionTitle}</TableCell>
-      <TableCell>{application.city}</TableCell>
-      <TableCell>
-        <StatusBadge status={application.status} />
+      <TableCell className="whitespace-normal">
+        {/* The one link of the row; its ::after covers the whole row. */}
+        <Link
+          href={href}
+          aria-label={t.name(application)}
+          className="block outline-none after:absolute after:inset-0 focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-ring"
+        >
+          <span
+            className={cn(
+              "block font-semibold",
+              isFinalStatus(application.status) && "text-muted-foreground",
+            )}
+          >
+            {application.companyName}
+          </span>
+          <span className={secondLine}>{application.positionTitle}</span>
+        </Link>
       </TableCell>
       <TableCell>
-        <ApplicationActions application={application} editHref={href} actions={actions} />
+        {application.city}
+        {workMode && <span className={secondLine}>{workMode}</span>}
+      </TableCell>
+      <TableCell>
+        <div className={cn(aboveRowLink, "w-fit")}>
+          <StatusTag application={application} changeStatus={actions.changeStatus} />
+        </div>
+      </TableCell>
+      <TableCell className="text-right font-mono">
+        <span aria-hidden>{waiting === null ? t.waiting.none : t.waiting.days(waiting)}</span>
+        <span className="sr-only">
+          {waiting === null ? t.waiting.noneSpoken : t.waiting.daysSpoken(waiting)}
+        </span>
+      </TableCell>
+      <TableCell>
+        <div className={aboveRowLink}>
+          <ApplicationActions application={application} actions={actions} />
+        </div>
       </TableCell>
     </TableRow>
   );

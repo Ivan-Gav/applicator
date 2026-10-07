@@ -16,11 +16,14 @@ export type AppHeaderProps = {
 export function AppHeader({ homeHref, navItems, email, signOut }: AppHeaderProps) {
   return (
     <header className="sticky top-0 z-40 h-15 border-b bg-header">
-      <div className="flex h-full items-center justify-between gap-4 px-6">
-        <div className="flex items-center gap-8">
+      <div className="flex h-full items-center justify-between gap-4 px-4 sm:px-6">
+        <div className="flex items-center gap-4 sm:gap-8">
           <Link href={homeHref} className="flex items-center gap-1.25 text-primary">
             <Logo className="size-7.5" />
-            <span className="font-wordmark text-[21px] font-bold italic">{messages.app.name}</span>
+            {/* Below sm only the logo shows; the name still labels the link. */}
+            <span className="sr-only font-wordmark text-[21px] font-bold italic sm:not-sr-only">
+              {messages.app.name}
+            </span>
           </Link>
           <MainNav items={navItems} />
         </div>

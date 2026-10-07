@@ -63,13 +63,20 @@ export const messages = {
       `${positionTitle} at ${companyName}`,
     columns: {
       appliedAt: "Applied",
-      company: "Company",
-      position: "Position",
+      company: "Company and position",
       city: "City",
       status: "Status",
+      waiting: "Waiting",
       actions: "Actions",
     },
     notApplied: "Not recorded",
+    // Days without a response; the short form is shown, the spoken one read out.
+    waiting: {
+      days: (days: number) => `${days} d`,
+      daysSpoken: (days: number) => (days === 1 ? "1 day" : `${days} days`),
+      none: "—",
+      noneSpoken: "Not waiting",
+    },
     views: {
       label: "Applications shown",
       active: "Active",
@@ -83,20 +90,17 @@ export const messages = {
     actions: {
       // The accessible name of a row action: the visible label, then the application.
       label: (action: string, name: string) => `${action}: ${name}`,
-      edit: "Edit",
-      changeStatus: "Change status",
       archive: "Archive",
       unarchive: "Restore",
       delete: "Delete",
       failed: "That did not work. Try again in a moment.",
     },
     statusChange: {
-      title: "Change status",
-      description: (name: string, status: string) => `“${name}” is now at ${status}.`,
-      status: "New status",
-      submit: "Change status",
-      saving: "Saving…",
-      cancel: "Cancel",
+      // The status tag's accessible name: its visible label first.
+      trigger: (status: string, name: string) => `${status}. Change status: ${name}`,
+      menuTitle: "Move to",
+      // A status entered again, such as a further interview round.
+      again: (status: string) => `${status} (another round)`,
       failure: {
         [StatusChangeFailure.Invalid]: "The status could not be changed. Choose one from the list.",
         [StatusChangeFailure.Illegal]:

@@ -1,5 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
 import { applicationPath, applicationsPath, ApplicationsView, routes } from "@/app/routes";
+import type { ApplicationStatus } from "@/domain/application/model";
 import { formatDay } from "@/lib/date";
 import { messages } from "@/ui/messages";
 import { removeApplications, seedApplication } from "./support/applications";
@@ -33,6 +34,16 @@ function actionButton(page: Page, action: string, company: string, position: str
   });
 }
 
+// The tag of an application in an open status, which is the menu that changes it.
+function statusTag(page: Page, status: ApplicationStatus, company: string, position: string) {
+  return page.getByRole("button", {
+    name: t.statusChange.trigger(
+      t.status[status],
+      t.name({ companyName: company, positionTitle: position }),
+    ),
+  });
+}
+
 test("an application created through the form is listed, edited on its page, and survives reloads", async ({
   page,
 }) => {
@@ -59,16 +70,16 @@ test("an application created through the form is listed, edited on its page, and
   const row = rowOf(page, "Initech");
   await expect(row).toContainText("Platform Engineer");
   await expect(row).toContainText(appliedOn);
-  await expect(row.getByRole("status", { name: t.status.applied })).toBeVisible();
+  await expect(statusTag(page, "applied", "Initech", "Platform Engineer")).toBeVisible();
 
   // Proves the row came from the database, not from client state.
   await page.reload();
   await expect(row).toContainText("Platform Engineer");
-  await expect(row.getByRole("status", { name: t.status.applied })).toBeVisible();
+  await expect(statusTag(page, "applied", "Initech", "Platform Engineer")).toBeVisible();
   await expect(page.getByRole("heading", { name: t.empty.title })).toBeHidden();
 
   const name = t.name({ companyName: "Initech", positionTitle: "Platform Engineer" });
-  await row.getByRole("link", { name: t.actions.label(t.actions.edit, name) }).click();
+  await row.getByRole("link", { name }).click();
   await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
   await expect(
     page.getByRole("textbox", { name: t.form.salary.amounts.advertised.to }),
@@ -99,23 +110,18 @@ test("a status changed from the list is dated by the server and lands in the his
   );
   await page.goto(routes.applications);
 
-  await actionButton(page, t.actions.changeStatus, "Hooli", "SRE").click();
-  const dialog = page.getByRole("dialog", { name: t.statusChange.title });
-  await expect(dialog.getByRole("option")).toHaveText([
+  await statusTag(page, "applied", "Hooli", "SRE").click();
+  const menu = page.getByRole("menu");
+  await expect(menu.getByRole("menuitem")).toHaveText([
     t.status.screening,
     t.status.rejected,
     t.status.withdrawn,
   ]);
-  await dialog
-    .getByRole("combobox", { name: t.statusChange.status })
-    .selectOption({ label: t.status.screening });
-  await dialog.getByRole("button", { name: t.statusChange.submit }).click();
-  await expect(dialog).toBeHidden();
+  await menu.getByRole("menuitem", { name: t.status.screening }).click();
+  await expect(statusTag(page, "screening", "Hooli", "SRE")).toBeVisible();
 
   await page.reload();
-  await expect(
-    rowOf(page, "Hooli").getByRole("status", { name: t.status.screening }),
-  ).toBeVisible();
+  await expect(statusTag(page, "screening", "Hooli", "SRE")).toBeVisible();
 
   await page.goto(applicationPath(id));
   const screenedOn = formatDay(new Date(), timeZone);
@@ -159,4 +165,34 @@ test("archiving hides an application until it is restored, and deleting removes 
   await expect(rowOf(page, "Vandelay")).toBeHidden();
   await page.goto(applicationsPath(ApplicationsView.Archived));
   await expect(rowOf(page, "Vandelay")).toBeHidden();
+});
+
+test("a click outside the status menu or the delete dialog only closes it", async ({ page }) => {
+  await seedApplication(page.request, {
+    companyName: "Soylent",
+    positionTitle: "Chef",
+    status: "applied",
+  });
+  await page.goto(routes.applications);
+  const rowLink = rowOf(page, "Soylent").getByRole("link");
+  // Taken while nothing covers the row: an open dialog hides it from role queries.
+  const box = await rowLink.boundingBox();
+  expect(box).not.toBeNull();
+  const { x, y, width, height } = box!;
+  // A click where the row's own link lies: whatever covers it must take the click.
+  const clickOnRowLink = () => page.mouse.click(x + width / 2, y + height / 2);
+
+  await statusTag(page, "applied", "Soylent", "Chef").click();
+  await expect(page.getByRole("menu")).toBeVisible();
+  await clickOnRowLink();
+  await expect(page.getByRole("menu")).toBeHidden();
+  await expect(page).toHaveURL(isAt(routes.applications));
+
+  await actionButton(page, t.actions.delete, "Soylent", "Chef").click();
+  const confirm = page.getByRole("alertdialog", { name: t.deleteDialog.title });
+  await expect(confirm).toBeVisible();
+  await clickOnRowLink();
+  await expect(confirm).toBeHidden();
+  await expect(page).toHaveURL(isAt(routes.applications));
+  await expect(rowLink).toBeVisible();
 });
