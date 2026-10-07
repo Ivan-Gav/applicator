@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { IconTooltip } from "@/ui/IconTooltip";
 import { ExitIcon } from "@/ui/icons/ExitIcon";
 import { Button } from "@/ui/kit/button";
 import { messages } from "@/ui/messages";
@@ -26,15 +27,17 @@ export function AppHeader({ homeHref, navItems, email, signOut }: AppHeaderProps
         <div className="flex items-center gap-3">
           <span className="hidden text-[13px] text-muted-foreground sm:inline">{email}</span>
           <form action={signOut}>
-            <Button
-              type="submit"
-              variant="ghost"
-              size="icon"
-              aria-label={messages.nav.signOut}
-              className="rounded-full hover:bg-accent dark:hover:bg-accent"
-            >
-              <ExitIcon className="size-5.5" />
-            </Button>
+            <IconTooltip label={messages.nav.signOut}>
+              <Button
+                type="submit"
+                variant="ghost"
+                size="icon"
+                aria-label={messages.nav.signOut}
+                className="rounded-full hover:bg-accent dark:hover:bg-accent"
+              >
+                <ExitIcon className="size-5.5" />
+              </Button>
+            </IconTooltip>
           </form>
           <ThemeSwitch />
         </div>

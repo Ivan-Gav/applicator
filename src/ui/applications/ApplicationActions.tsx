@@ -13,6 +13,7 @@ import {
   AlertDialogTrigger,
 } from "@/ui/kit/alert-dialog";
 import { awaitingHydrationClass, useHydrated } from "@/ui/hooks/use-hydrated";
+import { IconTooltip } from "@/ui/IconTooltip";
 import { ArchiveIcon } from "@/ui/icons/ArchiveIcon";
 import { DeleteIcon } from "@/ui/icons/DeleteIcon";
 import { RestoreIcon } from "@/ui/icons/RestoreIcon";
@@ -75,32 +76,36 @@ export function ApplicationActions({ application, actions }: ApplicationActionsP
   return (
     <div className="flex flex-col items-end gap-1">
       <div className="flex items-center gap-1">
-        <Button
-          variant="ghost"
-          size="icon"
-          disabled={archiving || !hydrated}
-          className={cn(iconButton, !hydrated && awaitingHydrationClass)}
-          aria-label={t.label(archiveLabel, name)}
-          onClick={toggleArchived}
-        >
-          {archived ? <RestoreIcon className="size-5" /> : <ArchiveIcon className="size-5" />}
-        </Button>
+        <IconTooltip label={archiveLabel}>
+          <Button
+            variant="ghost"
+            size="icon"
+            disabled={archiving || !hydrated}
+            className={cn(iconButton, !hydrated && awaitingHydrationClass)}
+            aria-label={t.label(archiveLabel, name)}
+            onClick={toggleArchived}
+          >
+            {archived ? <RestoreIcon className="size-5" /> : <ArchiveIcon className="size-5" />}
+          </Button>
+        </IconTooltip>
         <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-          <AlertDialogTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              disabled={!hydrated}
-              className={cn(
-                iconButton,
-                "hover:text-destructive",
-                !hydrated && awaitingHydrationClass,
-              )}
-              aria-label={t.label(t.delete, name)}
-            >
-              <DeleteIcon className="size-5" />
-            </Button>
-          </AlertDialogTrigger>
+          <IconTooltip label={t.delete}>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                disabled={!hydrated}
+                className={cn(
+                  iconButton,
+                  "hover:text-destructive",
+                  !hydrated && awaitingHydrationClass,
+                )}
+                aria-label={t.label(t.delete, name)}
+              >
+                <DeleteIcon className="size-5" />
+              </Button>
+            </AlertDialogTrigger>
+          </IconTooltip>
           <AlertDialogContent
             // A click outside cancels, as Cancel does, unless the deletion is under way.
             onOverlayClick={() => {
