@@ -19,11 +19,18 @@ const actions = {
   delete: vi.fn(),
 };
 
-function renderList(applications: Application[], archived = false) {
+type ListOptions = { archived?: boolean; nothingMatches?: boolean; showMoreHref?: string | null };
+
+function renderList(
+  applications: Application[],
+  { archived = false, nothingMatches = false, showMoreHref = null }: ListOptions = {},
+) {
   render(
     <ApplicationList
       applications={applications}
       archived={archived}
+      nothingMatches={nothingMatches}
+      showMoreHref={showMoreHref}
       addHref="/new"
       activeHref="/list"
       archivedHref="/list?view=archived"
@@ -171,7 +178,7 @@ describe("ApplicationList", () => {
   });
 
   it("shows archived applications under their own name, each offering to restore it", () => {
-    renderList([anApplication({ archivedAt: appliedAt })], true);
+    renderList([anApplication({ archivedAt: appliedAt })], { archived: true });
     const name = t.name({ companyName: "Acme", positionTitle: "Engineer" });
 
     expect(screen.getByRole("table", { name: t.views.archived })).toBeVisible();
@@ -186,9 +193,32 @@ describe("ApplicationList", () => {
   });
 
   it("says so when nothing is archived", () => {
-    renderList([], true);
+    renderList([], { archived: true });
 
     expect(screen.getByRole("heading", { name: t.emptyArchived.title })).toBeVisible();
     expect(screen.queryByRole("heading", { name: t.empty.title })).not.toBeInTheDocument();
+  });
+
+  it("says nothing matches when the filters let no row through", () => {
+    renderList([], { nothingMatches: true });
+
+    expect(screen.getByRole("heading", { name: t.nothingMatches.title })).toBeVisible();
+    expect(screen.getByText(t.nothingMatches.description)).toBeVisible();
+    expect(screen.queryByRole("heading", { name: t.empty.title })).not.toBeInTheDocument();
+  });
+
+  it("offers more rows only while some are left", () => {
+    renderList([anApplication()], { showMoreHref: "/list?shown=100" });
+
+    expect(screen.getByRole("link", { name: t.showMore })).toHaveAttribute(
+      "href",
+      "/list?shown=100",
+    );
+  });
+
+  it("offers no more rows once all are shown", () => {
+    renderList([anApplication()]);
+
+    expect(screen.queryByRole("link", { name: t.showMore })).not.toBeInTheDocument();
   });
 });

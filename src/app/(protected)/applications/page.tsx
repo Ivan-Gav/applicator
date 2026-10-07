@@ -5,11 +5,12 @@ import { currentUser } from "@/app/auth/_utils/current-user";
 import {
   ApplicationsView,
   applicationPath,
+  applicationsListStateOf,
+  applicationsPageSize,
   applicationsPath,
-  applicationsSearchParam,
-  applicationsViewOf,
   routes,
 } from "@/app/routes";
+import { applicationListView } from "@/domain/application/list";
 import { ApplicationList } from "@/ui/applications/ApplicationList";
 import { messages } from "@/ui/messages";
 import { ColumnWidth, PageColumn } from "@/ui/shell/PageColumn";
@@ -38,28 +39,36 @@ export default async function ApplicationsPage({ searchParams }: PageProps<"/app
   if (!user) {
     return null;
   }
-  const archived =
-    applicationsViewOf((await searchParams)[applicationsSearchParam.view]) ===
-    ApplicationsView.Archived;
+  const { view, query, shown } = applicationsListStateOf(await searchParams);
+  const archived = view === ApplicationsView.Archived;
   const [applications, timeZone] = await Promise.all([
     applicationRepositoryForRequest().then((repository) =>
       archived ? repository.listArchived(user.id) : repository.listActive(user.id),
     ),
     requestTimeZone(),
   ]);
+  const now = new Date();
+  // The whole view is filtered here; only the rows to show reach the browser.
+  const list = applicationListView(applications, query, now, shown);
 
   return (
     <PageColumn width={ColumnWidth.Wide}>
       <h1 className="sr-only">{messages.applications.title}</h1>
       <ApplicationList
-        applications={applications}
+        applications={list.shown}
         archived={archived}
+        nothingMatches={list.total > 0 && list.matching === 0}
+        showMoreHref={
+          list.shown.length < list.matching
+            ? applicationsPath(view, query, shown + applicationsPageSize)
+            : null
+        }
         addHref={routes.newApplication}
         activeHref={applicationsPath(ApplicationsView.Active)}
         archivedHref={applicationsPath(ApplicationsView.Archived)}
         applicationHref={applicationPath}
         timeZone={timeZone}
-        now={new Date()}
+        now={now}
         actions={actions}
       />
     </PageColumn>

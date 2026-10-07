@@ -61,3 +61,17 @@ export async function seedApplication(
   }
   return data.id;
 }
+
+/** Stores several applications at once for the user whose session `request` carries. */
+export async function seedApplications(
+  request: APIRequestContext,
+  inputs: readonly CreateApplicationInput[],
+): Promise<void> {
+  const userId = await signedInUserId(request);
+  const { error } = await createServiceRoleClient()
+    .from("application")
+    .insert(inputs.map((input) => toRow(userId, createApplicationSchema.parse(input))));
+  if (error) {
+    throw error;
+  }
+}

@@ -1,10 +1,18 @@
 import { describe, expect, it } from "vitest";
+import {
+  ApplicationSort,
+  defaultListQuery,
+  firstDirection,
+  SortDirection,
+} from "@/domain/application/list";
 import { SignInFailureReason } from "@/domain/user/model";
 import {
   ApplicationsView,
   afterSignInPath,
   afterSignInRoute,
   applicationPath,
+  applicationsListStateOf,
+  applicationsPageSize,
   applicationsPath,
   applicationsSearchParam,
   applicationsViewOf,
@@ -120,4 +128,86 @@ describe("applicationsViewOf", () => {
       expect(applicationsViewOf(value)).toBe(ApplicationsView.Active);
     },
   );
+});
+
+describe("applicationsListStateOf", () => {
+  function stateOf(path: string) {
+    const params = Object.fromEntries(parse(path).searchParams);
+    return applicationsListStateOf(params);
+  }
+
+  it("reads a bare list as the active view, unfiltered, newest first, one page long", () => {
+    expect(stateOf(routes.applications)).toEqual({
+      view: ApplicationsView.Active,
+      query: defaultListQuery,
+      shown: applicationsPageSize,
+    });
+  });
+
+  it("reads back every part of a path it built", () => {
+    const state = {
+      view: ApplicationsView.Archived,
+      query: {
+        search: "platform engineer",
+        statuses: ["applied", "interview"] as const,
+        waitingLong: true,
+        sort: ApplicationSort.Company,
+        direction: SortDirection.Descending,
+      },
+      shown: 150,
+    };
+
+    expect(stateOf(applicationsPath(state.view, state.query, state.shown))).toEqual(state);
+  });
+
+  it("writes the order whole, column and direction, whenever it is not the default", () => {
+    const { sort, direction } = applicationsSearchParam;
+
+    expect(
+      applicationsPath(ApplicationsView.Active, {
+        ...defaultListQuery,
+        sort: ApplicationSort.Waiting,
+        direction: firstDirection(ApplicationSort.Waiting),
+      }),
+    ).toBe(`${routes.applications}?${sort}=${ApplicationSort.Waiting}&${direction}=desc`);
+    expect(
+      applicationsPath(ApplicationsView.Active, {
+        ...defaultListQuery,
+        direction: SortDirection.Ascending,
+      }),
+    ).toBe(`${routes.applications}?${sort}=${ApplicationSort.AppliedAt}&${direction}=asc`);
+  });
+
+  it("leaves the default order out of the path", () => {
+    expect(applicationsPath(ApplicationsView.Active, defaultListQuery)).toBe(routes.applications);
+  });
+
+  it.each(["company", "applied", "waiting"])(
+    "reads a missing direction as descending, for sort=%s too",
+    (sort) => {
+      expect(stateOf(`${routes.applications}?sort=${sort}`).query.direction).toBe(
+        SortDirection.Descending,
+      );
+    },
+  );
+
+  it("ignores what it does not know", () => {
+    expect(
+      stateOf(
+        `${routes.applications}?status=applied,hired,,offer&waiting=yes&sort=salary&dir=up&shown=abc`,
+      ),
+    ).toEqual({
+      view: ApplicationsView.Active,
+      query: { ...defaultListQuery, statuses: ["applied", "offer"] },
+      shown: applicationsPageSize,
+    });
+  });
+
+  it.each(["0", "-50", "10", "1e3", "2.5"])("shows one page for shown=%s", (shown) => {
+    expect(stateOf(`${routes.applications}?shown=${shown}`).shown).toBe(applicationsPageSize);
+  });
+
+  it("takes the first of repeated parameters", () => {
+    expect(applicationsListStateOf({ q: ["acme", "globex"] }).query.search).toBe("acme");
+  });
 });

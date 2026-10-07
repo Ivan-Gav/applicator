@@ -82,6 +82,11 @@ export const messages = {
       active: "Active",
       archived: "Archived",
     },
+    nothingMatches: {
+      title: "Nothing matches",
+      description: "Try another word, or clear the filters.",
+    },
+    showMore: "Show more",
     emptyArchived: {
       title: "No archived applications",
       description:

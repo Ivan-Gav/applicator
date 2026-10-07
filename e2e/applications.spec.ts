@@ -1,9 +1,16 @@
 import { expect, type Page, test } from "@playwright/test";
-import { applicationPath, applicationsPath, ApplicationsView, routes } from "@/app/routes";
+import {
+  applicationPath,
+  applicationsPageSize,
+  applicationsPath,
+  ApplicationsView,
+  routes,
+} from "@/app/routes";
+import { defaultListQuery } from "@/domain/application/list";
 import type { ApplicationStatus } from "@/domain/application/model";
 import { formatDay } from "@/lib/date";
 import { messages } from "@/ui/messages";
-import { removeApplications, seedApplication } from "./support/applications";
+import { removeApplications, seedApplication, seedApplications } from "./support/applications";
 import { applicationsStateFile } from "./support/auth";
 import { isAt } from "./support/urls";
 
@@ -196,4 +203,46 @@ test("a click outside the status menu or the delete dialog only closes it", asyn
   await expect(confirm).toBeHidden();
   await expect(page).toHaveURL(isAt(routes.applications));
   await expect(rowLink).toBeVisible();
+});
+
+test("the list shows a page at a time, and the server applies what the URL asks for", async ({
+  page,
+}) => {
+  const day = 24 * 60 * 60 * 1000;
+  // One more than a page, applied a day apart: "Company 50" is the newest.
+  await seedApplications(
+    page.request,
+    Array.from({ length: applicationsPageSize + 1 }, (_, index) => ({
+      companyName: `Company ${String(index).padStart(2, "0")}`,
+      positionTitle: "Engineer",
+      status: "applied",
+      appliedAt: new Date(firstOfSeptember.getTime() + index * day),
+    })),
+  );
+  const rows = page.getByRole("table", { name: t.title }).getByRole("row");
+  const showMore = page.getByRole("link", { name: t.showMore });
+
+  await page.goto(routes.applications);
+  await expect(rows).toHaveCount(applicationsPageSize + 1);
+  await expect(rows.nth(1)).toContainText("Company 50");
+
+  await showMore.click();
+  await expect(page).toHaveURL(
+    isAt(applicationsPath(ApplicationsView.Active, defaultListQuery, 2 * applicationsPageSize)),
+  );
+  await expect(rows).toHaveCount(applicationsPageSize + 2);
+  await expect(rows.last()).toContainText("Company 00");
+  await expect(showMore).toBeHidden();
+
+  await page.goto(
+    applicationsPath(ApplicationsView.Active, { ...defaultListQuery, search: "company 07" }),
+  );
+  await page.reload();
+  await expect(rows).toHaveCount(2);
+  await expect(rows.nth(1)).toContainText("Company 07");
+
+  await page.goto(
+    applicationsPath(ApplicationsView.Active, { ...defaultListQuery, search: "nowhere" }),
+  );
+  await expect(page.getByRole("heading", { name: t.nothingMatches.title })).toBeVisible();
 });

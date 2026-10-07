@@ -7,9 +7,14 @@ import { messages } from "@/ui/messages";
 import { ApplicationRow, type ApplicationRowActions } from "./ApplicationRow";
 
 export type ApplicationListProps = {
+  /** The rows to show: those matching the filters, at most one "Show more" step's worth. */
   applications: readonly Application[];
   /** Whether these are the archived applications rather than the active ones. */
   archived: boolean;
+  /** No row shown because the filters let none through, though the view has some. */
+  nothingMatches: boolean;
+  /** Where "Show more" leads; null once every matching row is shown. */
+  showMoreHref: string | null;
   addHref: string;
   activeHref: string;
   archivedHref: string;
@@ -26,6 +31,8 @@ const t = messages.applications;
 export function ApplicationList({
   applications,
   archived,
+  nothingMatches,
+  showMoreHref,
   addHref,
   activeHref,
   archivedHref,
@@ -34,7 +41,7 @@ export function ApplicationList({
   now,
   actions,
 }: ApplicationListProps) {
-  const empty = archived ? t.emptyArchived : t.empty;
+  const empty = nothingMatches ? t.nothingMatches : archived ? t.emptyArchived : t.empty;
 
   return (
     <div className="flex flex-col gap-4">
@@ -105,6 +112,14 @@ export function ApplicationList({
             </TableBody>
           </Table>
         </div>
+      )}
+      {showMoreHref && (
+        <Button asChild variant="outline" className="self-center">
+          {/* Stays where it is: the new rows appear below the ones already read. */}
+          <Link href={showMoreHref} scroll={false}>
+            {t.showMore}
+          </Link>
+        </Button>
       )}
     </div>
   );
