@@ -37,10 +37,7 @@ export function ApplicationList({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Button asChild>
-          <Link href={addHref}>{t.add}</Link>
-        </Button>
-        <nav aria-label={t.views.label} className="flex gap-1">
+        <nav aria-label={t.views.label} className="flex gap-1 rounded-md bg-muted p-1">
           {[
             { href: activeHref, label: t.views.active, current: !archived },
             { href: archivedHref, label: t.views.archived, current: archived },
@@ -50,14 +47,19 @@ export function ApplicationList({
               href={href}
               aria-current={current ? "page" : undefined}
               className={cn(
-                "rounded-md px-3 py-1 text-sm",
-                current ? "bg-muted font-medium" : "text-muted-foreground hover:text-foreground",
+                "rounded-sm px-4 py-1.5 text-[15px] font-medium",
+                current
+                  ? "bg-card font-bold text-foreground"
+                  : "text-muted-foreground hover:text-foreground",
               )}
             >
               {label}
             </Link>
           ))}
         </nav>
+        <Button asChild size="lg" className="px-4 font-semibold">
+          <Link href={addHref}>{t.add}</Link>
+        </Button>
       </div>
 
       {applications.length === 0 ? (

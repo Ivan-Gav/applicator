@@ -12,6 +12,7 @@ import {
 } from "@/app/routes";
 import { ApplicationList } from "@/ui/applications/ApplicationList";
 import { messages } from "@/ui/messages";
+import { ColumnWidth, PageColumn } from "@/ui/shell/PageColumn";
 import {
   archiveApplication,
   changeApplicationStatus,
@@ -48,8 +49,8 @@ export default async function ApplicationsPage({ searchParams }: PageProps<"/app
   ]);
 
   return (
-    <>
-      <h1 className="text-2xl font-semibold tracking-tight">{messages.applications.title}</h1>
+    <PageColumn width={ColumnWidth.Wide}>
+      <h1 className="sr-only">{messages.applications.title}</h1>
       <ApplicationList
         applications={applications}
         archived={archived}
@@ -60,6 +61,6 @@ export default async function ApplicationsPage({ searchParams }: PageProps<"/app
         timeZone={timeZone}
         actions={actions}
       />
-    </>
+    </PageColumn>
   );
 }

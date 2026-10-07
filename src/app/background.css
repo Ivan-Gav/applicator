@@ -1,0 +1,111 @@
+/* Page background: gradient + alligator-skin strip down the left edge.
+   The stencil /bg/skin.svg holds the shadows only. */
+
+:root {
+  /* Keep no lighter than the glows, or a pale seam shows at the skin edge. */
+  --bg-center: #ebf1cf;
+  --bg-edge: #dfe9b8;
+  --bg-warm: rgb(240 226 110 / 0.62);
+  --bg-cool: rgb(172 222 196 / 0.62);
+  --bg-cool-at: 105% 120%;
+  --bg-shade: rgb(38 98 16 / 0.04);
+
+  /* luminosity: the skin takes only lightness, hue comes from the background below. */
+  --skin-blend: luminosity;
+  --skin-lit: #ffffff;
+  --skin-shadow: #d2dda2;
+  --skin-opacity: 0.9;
+}
+
+.dark {
+  --bg-center: #0c1f07;
+  --bg-edge: #081804;
+  --bg-warm: rgb(120 140 0 / 0.16);
+  --bg-cool: rgb(0 92 72 / 0.18);
+  --bg-cool-at: 20% 125%;
+  --bg-shade: rgb(0 0 0 / 0.3);
+
+  --skin-blend: normal;
+  --skin-lit: #12300a;
+  --skin-shadow: #061404;
+  --skin-opacity: 0.9;
+}
+
+/* Without it the body background moves to the canvas and luminosity
+   blending has nothing beneath it, so the skin turns white. */
+html {
+  background-color: var(--bg-center);
+}
+
+.app-bg {
+  /* Width of the page's content column; the skin stops just short of it.
+     Declared here, not on :root, so that the derived values below follow
+     a page's column (see the [data-column] rules). */
+  --content-width: 880px;
+  --skin-zone: clamp(16px, ((100vw - var(--content-width)) / 2 + 48px) * 0.9, 432px);
+  /* Fade edge is an arc of a huge circle: reaches furthest at the top, recedes downward. */
+  --skin-arc-r: 3900px;
+  --skin-reach: calc(var(--skin-zone) * 0.88);
+  --skin-arc-at: calc(var(--skin-reach) - var(--skin-arc-r)) 0;
+  --skin-fade: radial-gradient(
+    circle var(--skin-arc-r) at var(--skin-arc-at),
+    #000 calc(var(--skin-arc-r) - var(--skin-reach) * 0.45),
+    rgb(0 0 0 / 0.45) calc(var(--skin-arc-r) - var(--skin-reach) * 0.2),
+    transparent var(--skin-arc-r)
+  );
+
+  position: relative;
+  isolation: isolate;
+  min-height: 100dvh;
+  background-color: var(--bg-center);
+  background-image:
+    radial-gradient(150% 110% at 90% -20%, var(--bg-warm), transparent 70%),
+    radial-gradient(140% 120% at var(--bg-cool-at), var(--bg-cool), transparent 70%),
+    radial-gradient(120% 50% at 50% 115%, var(--bg-shade), transparent 70%),
+    radial-gradient(
+      circle var(--skin-arc-r) at var(--skin-arc-at),
+      var(--bg-edge) calc(var(--skin-arc-r) - var(--skin-reach)),
+      var(--bg-center) var(--skin-arc-r)
+    );
+  background-attachment: fixed;
+}
+
+/* Set by PageColumn; its max-width reads --content-width back. */
+.app-bg:has([data-column="wide"]) {
+  --content-width: 1200px;
+}
+
+.app-bg:has([data-column="narrow"]) {
+  --content-width: 760px;
+}
+
+.app-skin {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: 480px;
+  z-index: -1;
+  pointer-events: none;
+  opacity: var(--skin-opacity);
+  mix-blend-mode: var(--skin-blend);
+  will-change: transform;
+  -webkit-mask-image: var(--skin-fade);
+  mask-image: var(--skin-fade);
+}
+
+.app-skin::before,
+.app-skin::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.app-skin::before {
+  background: var(--skin-lit);
+}
+
+/* Shadow colour through the stencil; the 1200px tile repeats seamlessly. */
+.app-skin::after {
+  background: var(--skin-shadow);
+  -webkit-mask: url("/bg/skin.svg") left top / 480px auto repeat-y;
+  mask: url("/bg/skin.svg") left top / 480px auto repeat-y;
+}

@@ -13,6 +13,7 @@ import { StatusBadge } from "@/ui/applications/StatusBadge";
 import { StatusChangeDialog } from "@/ui/applications/StatusChangeDialog";
 import { StatusHistory } from "@/ui/applications/StatusHistory";
 import { messages } from "@/ui/messages";
+import { ColumnWidth, PageColumn } from "@/ui/shell/PageColumn";
 import { changeApplicationStatus, updateApplication } from "../actions";
 
 const t = messages.applications;
@@ -53,7 +54,7 @@ export default async function ApplicationPage({ params }: PageProps<"/applicatio
   );
 
   return (
-    <>
+    <PageColumn width={ColumnWidth.Narrow}>
       <Link
         href={applicationsPath()}
         className="self-start text-sm text-muted-foreground underline-offset-4 hover:underline"
@@ -80,7 +81,7 @@ export default async function ApplicationPage({ params }: PageProps<"/applicatio
         )}
       </dl>
 
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,36rem)_1fr]">
+      <div className="flex flex-col gap-10">
         <section aria-labelledby="application-details-title" className="flex flex-col gap-4">
           <h2 id="application-details-title" className="text-lg font-medium">
             {t.page.details}
@@ -93,6 +94,6 @@ export default async function ApplicationPage({ params }: PageProps<"/applicatio
         </section>
         <StatusHistory events={history} timeZone={timeZone} />
       </div>
-    </>
+    </PageColumn>
   );
 }

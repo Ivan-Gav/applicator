@@ -28,7 +28,15 @@ export const messages = {
   },
 
   nav: {
+    label: "Main",
+    applications: "Applications",
     signOut: "Sign out",
+    darkTheme: "Dark theme",
+  },
+
+  footer: {
+    sourceCode: "Source code on GitHub",
+    copyright: "© 2026 Ivan Gavrilin",
   },
 
   error: {
