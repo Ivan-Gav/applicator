@@ -3,6 +3,7 @@ import { currentUserIfReachable } from "@/app/auth/_utils/current-user";
 import { routes, signInPath, sourceRepositoryUrl } from "@/app/routes";
 import { Button } from "@/ui/kit/button";
 import { messages } from "@/ui/messages";
+import { Brand, BrandSize } from "@/ui/shell/Brand";
 
 const t = messages.home;
 
@@ -11,7 +12,9 @@ export default async function Home() {
 
   return (
     <main className="flex flex-1 flex-col items-center justify-center gap-6 p-8 text-center">
-      <h1 className="text-3xl font-semibold tracking-tight">{messages.app.name}</h1>
+      <h1>
+        <Brand size={BrandSize.Hero} />
+      </h1>
       <p className="max-w-prose text-muted-foreground">{t.summary}</p>
       <div className="flex flex-wrap justify-center gap-3">
         {user ? (
