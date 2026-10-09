@@ -16,7 +16,7 @@ export default async function ProtectedLayout({ children }: { children: ReactNod
   return (
     <>
       <AppHeader homeHref={routes.home} navItems={navItems} email={user.email} signOut={signOut} />
-      <main className="flex flex-1 flex-col pt-6 pb-24">{children}</main>
+      <main className="flex flex-1 flex-col pt-7 pb-18">{children}</main>
       <AppFooter sourceHref={sourceRepositoryUrl} />
     </>
   );

@@ -1,23 +1,12 @@
 /* Status colours come from the --status-* tokens in globals.css. */
 
-.tag {
-  --corner: 5px;
-  --tag-border-width: 1px;
-
-  display: inline-flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  min-width: 108px;
-  padding: 6px 9px;
-  font-size: 12px;
-  line-height: 1.2;
-  font-weight: 500;
-  white-space: nowrap;
-  color: var(--tag-fg);
-  border: var(--tag-border-width) solid var(--tag-border);
-  /* clip-path also cuts the border at the two clipped corners; the two
-     gradients redraw it along each diagonal, in the same colour and width. */
+/* The clipped-corner shape, shared by the tag and its colour square. */
+.tag,
+.swatch {
+  /* Drawn inside, so a border never changes the size. clip-path also cuts it
+     at the two clipped corners; the two gradients redraw it along each
+     diagonal, in the same colour and width. */
+  box-shadow: inset 0 0 0 var(--tag-border-width) var(--tag-border);
   background:
     linear-gradient(
       135deg,
@@ -44,6 +33,23 @@
   );
 }
 
+.tag {
+  --corner: 5px;
+  --tag-border-width: 1px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 108px;
+  padding: 6px 9px;
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--tag-fg);
+}
+
 .page {
   min-width: 120px;
 }
@@ -60,12 +66,21 @@ button.tag:focus-visible {
 
 /* A colour square standing for a status, e.g. in the status menu. */
 .swatch {
+  --corner: 2px;
+  --tag-border-width: 1px;
+
   display: inline-block;
   flex-shrink: 0;
-  width: 10px;
-  height: 10px;
-  background: var(--tag-bg);
-  border: 1.5px solid var(--tag-border);
+  width: 9px;
+  height: 9px;
+}
+
+.swatch[data-status="applied"] {
+  --tag-border-width: 1.5px;
+}
+
+.swatch[data-status="offer"] {
+  --tag-border-width: 2px;
 }
 
 .tag[data-status="draft"],
@@ -75,8 +90,12 @@ button.tag:focus-visible {
   --tag-border: var(--status-draft-border);
 }
 
-.tag[data-status="draft"] {
-  border-style: dashed;
+/* A dashed outline drawn inside, as the solid ones are. */
+.tag[data-status="draft"],
+.swatch[data-status="draft"] {
+  box-shadow: none;
+  outline: var(--tag-border-width) dashed var(--tag-border);
+  outline-offset: calc(-1 * var(--tag-border-width));
 }
 
 .tag[data-status="applied"],
@@ -149,4 +168,9 @@ button.tag:focus-visible {
   --tag-bg: var(--status-withdrawn-bg);
   --tag-fg: var(--status-withdrawn-fg);
   --tag-border: var(--status-withdrawn-border);
+}
+
+/* After the status rules: darker than the tag's fill, which would vanish against a chip. */
+.swatch[data-status="rejected"] {
+  --tag-bg: var(--status-rejected-swatch);
 }

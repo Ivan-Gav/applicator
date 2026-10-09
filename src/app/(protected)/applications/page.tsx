@@ -14,6 +14,7 @@ import { applicationListView } from "@/domain/application/list";
 import { ApplicationList } from "@/ui/applications/ApplicationList";
 import { messages } from "@/ui/messages";
 import { ColumnWidth, PageColumn } from "@/ui/shell/PageColumn";
+import { applicationListControls, applicationSortLinks } from "./_utils/list-controls";
 import {
   archiveApplication,
   changeApplicationStatus,
@@ -58,6 +59,8 @@ export default async function ApplicationsPage({ searchParams }: PageProps<"/app
         applications={list.shown}
         archived={archived}
         nothingMatches={list.total > 0 && list.matching === 0}
+        controls={applicationListControls({ view, query }, list)}
+        sorting={applicationSortLinks({ view, query })}
         showMoreHref={
           list.shown.length < list.matching
             ? applicationsPath(view, query, shown + applicationsPageSize)

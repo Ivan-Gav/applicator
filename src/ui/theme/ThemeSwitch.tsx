@@ -33,11 +33,11 @@ export function ThemeSwitch() {
         disabled={!hydrated}
         onClick={() => setTheme(dark ? Theme.Light : Theme.Dark)}
         className={cn(
-          "inline-flex h-5.5 w-10 shrink-0 items-center rounded-full border-2 border-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+          "ml-1 inline-flex h-5.5 w-10 shrink-0 items-center rounded-full border-[1.5px] border-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
           !hydrated && awaitingHydrationClass,
         )}
       >
-        <span className="flex size-3.75 translate-x-0.5 items-center justify-center rounded-full bg-foreground text-header transition-transform dark:translate-x-4.75">
+        <span className="flex size-3.75 translate-x-0.5 items-center justify-center rounded-full bg-foreground text-header transition-transform dark:translate-x-5">
           <SunIcon className="size-2.25 dark:hidden" />
           <MoonIcon className="hidden size-2.25 dark:block" />
         </span>

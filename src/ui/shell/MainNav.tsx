@@ -19,7 +19,7 @@ export function MainNav({ items }: MainNavProps) {
 
   return (
     <nav aria-label={messages.nav.label}>
-      <ul className="flex items-center gap-5">
+      <ul className="flex items-center gap-6">
         {items.map(({ href, label }) => {
           const current = pathname === href || pathname.startsWith(`${href}/`);
           return (
@@ -27,7 +27,7 @@ export function MainNav({ items }: MainNavProps) {
               <Link
                 href={href}
                 aria-current={current ? "page" : undefined}
-                className="inline-block border-b-3 border-transparent px-1 pt-1 pb-1.5 text-[15px] font-semibold hover:border-border aria-[current=page]:border-primary"
+                className="inline-block border-b-2 border-transparent px-0.5 py-1.5 text-sm font-semibold hover:border-border aria-[current=page]:border-primary"
               >
                 {label}
               </Link>

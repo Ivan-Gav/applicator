@@ -21,6 +21,7 @@ import {
   createApplicationSchema,
 } from "@/domain/application/schema";
 import { startOfLocalDay } from "@/lib/date";
+import { cn } from "@/lib/utils";
 import { Alert, AlertDescription } from "@/ui/kit/alert";
 import { Button } from "@/ui/kit/button";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/ui/kit/field";
@@ -37,6 +38,7 @@ import {
   isSalaryFormField,
 } from "./application-form-fields";
 import { applicationFormValues, hasContact, hasSalary } from "./application-form-values";
+import { advertisedSalaryText } from "./salary-text";
 
 export type ApplicationFormProps = {
   /**
@@ -50,6 +52,9 @@ export type ApplicationFormProps = {
 };
 
 const t = messages.applications.form;
+// Web addresses read better in a fixed-width face.
+const mono = "font-mono text-[13px] md:text-[13px]";
+const actionButton = "rounded-[3px] px-3.5 font-semibold";
 
 // An unselected option submits "", which the enum fields do not accept.
 const blankAsNull = (value: unknown) => (value === "" ? null : value);
@@ -82,6 +87,12 @@ export function ApplicationForm({ save, backHref, application }: ApplicationForm
     control: form.control,
     name: ["contact.name", "contact.role"],
   });
+  const salarySummary = advertisedSalaryText(
+    useWatch({
+      control: form.control,
+      name: ["salary.advertised.min", "salary.advertised.max", "salary.currency", "salary.period"],
+    }),
+  );
   const contactSummary = t.contact.summary(
     contactNameAndRole.filter(
       (part): part is string => typeof part === "string" && part.trim() !== "",
@@ -156,7 +167,7 @@ export function ApplicationForm({ save, backHref, application }: ApplicationForm
   }
 
   return (
-    <form onSubmit={(event) => void submit(event)} noValidate className="flex flex-col gap-5">
+    <form onSubmit={(event) => void submit(event)} noValidate className="flex flex-col gap-4.5">
       <Field data-invalid={errors.companyName ? true : undefined}>
         <FieldLabel htmlFor="companyName">{t.labels.companyName}</FieldLabel>
         <Input
@@ -168,7 +179,7 @@ export function ApplicationForm({ save, backHref, application }: ApplicationForm
         {error("companyName")}
       </Field>
 
-      <div className="grid gap-5 sm:grid-cols-[2fr_1fr]">
+      <div className="grid gap-3.5 sm:grid-cols-[2fr_1fr]">
         <Field data-invalid={errors.positionTitle ? true : undefined}>
           <FieldLabel htmlFor="positionTitle">{t.labels.positionTitle}</FieldLabel>
           <Input
@@ -200,7 +211,7 @@ export function ApplicationForm({ save, backHref, application }: ApplicationForm
       </div>
 
       {!editing && (
-        <div className="grid gap-5 sm:grid-cols-2">
+        <div className="grid gap-3.5 sm:grid-cols-2">
           <Field data-invalid={errors.status ? true : undefined}>
             <FieldLabel htmlFor="status">{t.labels.status}</FieldLabel>
             <NativeSelect
@@ -231,7 +242,7 @@ export function ApplicationForm({ save, backHref, application }: ApplicationForm
         </div>
       )}
 
-      <div className="grid gap-5 sm:grid-cols-3">
+      <div className="grid gap-3.5 sm:grid-cols-3">
         <Field data-invalid={errors.city ? true : undefined}>
           <FieldLabel htmlFor="city">{t.labels.city}</FieldLabel>
           <Input
@@ -273,7 +284,7 @@ export function ApplicationForm({ save, backHref, application }: ApplicationForm
         </Field>
       </div>
 
-      <div className="grid gap-5 sm:grid-cols-2">
+      <div className="grid gap-3.5 sm:grid-cols-2">
         <Field data-invalid={errors.channel ? true : undefined}>
           <FieldLabel htmlFor="channel">{t.labels.channel}</FieldLabel>
           <NativeSelect
@@ -303,13 +314,14 @@ export function ApplicationForm({ save, backHref, application }: ApplicationForm
         </Field>
       </div>
 
-      <div className="grid gap-5 sm:grid-cols-2">
+      <div className="grid gap-3.5 sm:grid-cols-2">
         <Field data-invalid={errors.sourceUrl ? true : undefined}>
           <FieldLabel htmlFor="sourceUrl">{t.labels.sourceUrl}</FieldLabel>
           <Input
             id="sourceUrl"
             type="url"
             inputMode="url"
+            className={mono}
             {...describedBy("sourceUrl")}
             {...form.register("sourceUrl")}
           />
@@ -322,6 +334,7 @@ export function ApplicationForm({ save, backHref, application }: ApplicationForm
             id="applicationUrl"
             type="url"
             inputMode="url"
+            className={mono}
             {...describedBy("applicationUrl")}
             {...form.register("applicationUrl")}
           />
@@ -337,6 +350,7 @@ export function ApplicationForm({ save, backHref, application }: ApplicationForm
 
       <SalaryFields
         register={form.register}
+        summary={salarySummary}
         errors={errors.salary}
         open={salaryShown}
         onOpenChange={setSalaryOpen}
@@ -358,15 +372,21 @@ export function ApplicationForm({ save, backHref, application }: ApplicationForm
         </Alert>
       )}
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2.5 pt-1">
         <Button
           type="submit"
+          size="lg"
           disabled={pending || unchanged || !hydrated}
-          className={hydrated ? undefined : awaitingHydrationClass}
+          className={cn(actionButton, !hydrated && awaitingHydrationClass)}
         >
           {pending ? t.saving : editing ? t.saveChanges : t.submit}
         </Button>
-        <Button asChild variant="outline">
+        <Button
+          asChild
+          variant="outline"
+          size="lg"
+          className={cn(actionButton, "border-input bg-transparent dark:bg-transparent")}
+        >
           <Link href={backHref}>{messages.applications.back}</Link>
         </Button>
       </div>

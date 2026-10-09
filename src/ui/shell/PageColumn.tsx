@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { cn } from "@/lib/utils";
 
 export const ColumnWidth = {
   // The applications list.
@@ -21,7 +22,10 @@ export function PageColumn({ width, children }: PageColumnProps) {
   return (
     <div
       data-column={width}
-      className="mx-auto flex w-full max-w-(--content-width) flex-col gap-6 px-6"
+      className={cn(
+        "mx-auto flex w-full max-w-(--content-width) flex-col px-6",
+        width === ColumnWidth.Wide ? "gap-4.5" : "gap-8",
+      )}
     >
       {children}
     </div>

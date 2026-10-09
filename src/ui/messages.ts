@@ -9,6 +9,7 @@ import {
   StatusChangeFailure,
   type WorkMode,
 } from "@/domain/application/model";
+import type { SortDirection } from "@/domain/application/list";
 import { SignInFailureReason } from "@/domain/user/model";
 import type { ApplicationFormField } from "./applications/application-form-fields";
 
@@ -87,6 +88,22 @@ export const messages = {
       description: "Try another word, or clear the filters.",
     },
     showMore: "Show more",
+    search: {
+      label: "Search applications",
+      placeholder: "Search company, position or city",
+    },
+    // How many the view holds, and how many the filters let through.
+    count: (total: number) => (total === 1 ? "1 application" : `${total} applications`),
+    countFiltered: (matching: number, total: number) => `${matching} of ${total} match`,
+    filters: {
+      label: "Filter",
+      waitingLong: (days: number) => `Waiting ${days}+ days`,
+      clear: "Clear filters",
+    },
+    sortIndicator: {
+      asc: "▲",
+      desc: "▼",
+    } satisfies Record<SortDirection, string>,
     emptyArchived: {
       title: "No archived applications",
       description:
@@ -202,6 +219,12 @@ export const messages = {
       salary: {
         title: "Salary",
         hint: "Optional. Whole numbers without separators. For a single figure, enter it in both boxes; for “from” or “up to”, fill in one box only.",
+        // A row of the salary grid: its label, then the from and to boxes.
+        rows: {
+          advertised: "Advertised",
+          estimated: "Estimated",
+          asked: "Asked",
+        } satisfies Record<SalaryAmount, string>,
         amounts: {
           advertised: { from: "Advertised: from", to: "Advertised: to" },
           estimated: { from: "Estimated: from", to: "Estimated: to" },

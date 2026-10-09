@@ -75,12 +75,15 @@ describe("StatusTag", () => {
     });
   });
 
-  it("calls a repeated interview another round, and offers it first", async () => {
+  it("calls a repeated interview another round, not a plain interview", async () => {
     const { user } = renderTag(anApplication({ status: "interview" }));
 
     const menu = await openMenu(user, "interview");
 
-    expect(within(menu).getAllByRole("menuitem")[0]).toHaveTextContent(s.again(t.status.interview));
+    expect(within(menu).getByRole("menuitem", { name: s.again(t.status.interview) })).toBeVisible();
+    expect(
+      within(menu).queryByRole("menuitem", { name: t.status.interview }),
+    ).not.toBeInTheDocument();
   });
 
   it("moves at once to the status picked, sending only the status: the server dates it", async () => {

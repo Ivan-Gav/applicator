@@ -435,15 +435,22 @@ describe("ApplicationForm editing an application", () => {
 
   it("sums up the contact by name and role, as they are typed", async () => {
     const { user } = renderEdit();
-    const summary = screen.getByText(t.contact.title, { selector: "summary" });
 
-    expect(summary).toHaveTextContent(`${t.contact.title}${t.contact.summary(["Jane Doe"])}`);
+    expect(screen.getByText(t.contact.summary(["Jane Doe"]))).toBeVisible();
 
     await user.type(textbox(t.contact.labels.role), "Recruiter");
 
-    expect(summary).toHaveTextContent(
-      `${t.contact.title}${t.contact.summary(["Jane Doe", "Recruiter"])}`,
-    );
+    expect(screen.getByText(t.contact.summary(["Jane Doe", "Recruiter"]))).toBeVisible();
+  });
+
+  it("sums up the advertised salary, as it is typed", async () => {
+    const { user } = renderEdit();
+
+    expect(screen.getByText("60,000–70,000 EUR per year")).toBeVisible();
+
+    await user.clear(textbox(t.salary.amounts.advertised.to));
+
+    expect(screen.getByText("from 60,000 EUR per year")).toBeVisible();
   });
 
   function renderWithPeriodAlone(period: SalaryPeriod) {

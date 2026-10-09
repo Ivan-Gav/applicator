@@ -1,5 +1,6 @@
 "use client";
 
+import { Fragment } from "react";
 import type { FieldErrors, UseFormRegister } from "react-hook-form";
 import { salaryAmounts, salaryPeriods } from "@/domain/application/model";
 import type { CreateApplicationInput } from "@/domain/application/schema";
@@ -7,10 +8,13 @@ import { Field, FieldError, FieldLabel } from "@/ui/kit/field";
 import { Input } from "@/ui/kit/input";
 import { NativeSelect, NativeSelectOption } from "@/ui/kit/native-select";
 import { messages } from "@/ui/messages";
+import { panel, panelSummary } from "./panel";
 
 export type SalaryFieldsProps = {
   register: UseFormRegister<CreateApplicationInput>;
   errors: FieldErrors<CreateApplicationInput>["salary"];
+  /** Shown at the end of the title line, e.g. "60,000–70,000 EUR per year"; empty for none. */
+  summary: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 };
@@ -39,7 +43,7 @@ function describedBy(invalid: boolean, errorId: string, withHint = false) {
   } as const;
 }
 
-export function SalaryFields({ register, errors, open, onOpenChange }: SalaryFieldsProps) {
+export function SalaryFields({ register, errors, summary, open, onOpenChange }: SalaryFieldsProps) {
   const currencyInvalid = errors?.currency !== undefined;
   const periodInvalid = errors?.period !== undefined;
 
@@ -47,56 +51,65 @@ export function SalaryFields({ register, errors, open, onOpenChange }: SalaryFie
     <details
       open={open}
       onToggle={(event) => onOpenChange(event.currentTarget.open)}
-      className="rounded-lg border px-4 py-3"
+      className={panel}
     >
-      <summary className="cursor-pointer font-medium">{t.title}</summary>
-      <div className="mt-4 flex flex-col gap-5">
-        <p id={hintId} className="text-sm text-muted-foreground">
+      <summary className={panelSummary}>
+        <span>{t.title}</span>
+        {summary && (
+          <span className="font-mono text-[13px] font-normal text-muted-foreground">{summary}</span>
+        )}
+      </summary>
+      <div className="mt-3 flex flex-col gap-3">
+        <p id={hintId} className="text-[13px] text-muted-foreground">
           {t.hint}
         </p>
 
-        {salaryAmounts.map((amount) => {
-          const invalid = errors?.[amount] !== undefined;
-          const errorId = `salary-${amount}-error`;
-          return (
-            <div key={amount} className="flex flex-col gap-2">
-              <div className="grid gap-3 sm:grid-cols-2">
-                {(["min", "max"] as const).map((end) => {
-                  const id = `salary-${amount}-${end}`;
-                  return (
-                    <Field key={end} data-invalid={invalid ? true : undefined}>
-                      <FieldLabel htmlFor={id}>
-                        {end === "min" ? t.amounts[amount].from : t.amounts[amount].to}
-                      </FieldLabel>
-                      <Input
-                        id={id}
-                        inputMode="numeric"
-                        autoComplete="off"
-                        className="font-mono"
-                        {...describedBy(invalid, errorId, true)}
-                        {...register(`salary.${amount}.${end}`, {
-                          setValueAs: amountValue,
-                          // The schema pins a reversed range to min, so a fixed max must recheck it.
-                          deps: end === "max" ? `salary.${amount}.min` : undefined,
-                        })}
-                      />
-                    </Field>
-                  );
-                })}
-              </div>
-              <FieldError id={errorId} errors={invalid ? [{ message: t.errors.amount }] : []} />
-            </div>
-          );
-        })}
+        {/* A row per amount: its label, then the from and to boxes, which carry their own names. */}
+        <div className="grid grid-cols-[7rem_1fr_1fr] items-center gap-x-2.5 gap-y-2">
+          {salaryAmounts.map((amount) => {
+            const invalid = errors?.[amount] !== undefined;
+            const errorId = `salary-${amount}-error`;
+            return (
+              <Fragment key={amount}>
+                <span aria-hidden className="text-[13px] font-semibold">
+                  {t.rows[amount]}
+                </span>
+                {(["min", "max"] as const).map((end) => (
+                  <Input
+                    key={end}
+                    id={`salary-${amount}-${end}`}
+                    aria-label={end === "min" ? t.amounts[amount].from : t.amounts[amount].to}
+                    inputMode="numeric"
+                    autoComplete="off"
+                    className="font-mono"
+                    {...describedBy(invalid, errorId, true)}
+                    {...register(`salary.${amount}.${end}`, {
+                      setValueAs: amountValue,
+                      // The schema pins a reversed range to min, so a fixed max must recheck it.
+                      deps: end === "max" ? `salary.${amount}.min` : undefined,
+                    })}
+                  />
+                ))}
+                {invalid && (
+                  <FieldError
+                    id={errorId}
+                    className="col-span-3"
+                    errors={[{ message: t.errors.amount }]}
+                  />
+                )}
+              </Fragment>
+            );
+          })}
+        </div>
 
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-[7rem_1fr] gap-2.5">
           <Field data-invalid={currencyInvalid ? true : undefined}>
             <FieldLabel htmlFor="salary-currency">{t.currency}</FieldLabel>
             <Input
               id="salary-currency"
               maxLength={3}
               autoComplete="off"
-              className="uppercase"
+              className="font-mono uppercase"
               {...describedBy(currencyInvalid, "salary-currency-error")}
               {...register("salary.currency")}
             />

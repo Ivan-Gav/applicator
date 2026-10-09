@@ -8,6 +8,7 @@ import {
   routes,
   signInPath,
 } from "@/app/routes";
+import { ApplicationSort, defaultListQuery, SortDirection } from "@/domain/application/list";
 import { SignInFailureReason } from "@/domain/user/model";
 import { messages } from "@/ui/messages";
 import { removeApplicationsById, seedApplication as seedFor } from "./support/applications";
@@ -84,6 +85,35 @@ test.describe("with a stored session", () => {
     const results = await new AxeBuilder({ page }).analyze();
 
     expect(results.violations).toEqual([]);
+  });
+
+  test("applications list with search, filters and order has no accessibility violations", async ({
+    page,
+  }) => {
+    const companyName = uniqueCompany("Filter Corp");
+    await seedApplication(page.request, {
+      companyName,
+      positionTitle: "Engineer",
+      status: "applied",
+    });
+    await page.goto(
+      applicationsPath(ApplicationsView.Active, {
+        ...defaultListQuery,
+        search: companyName,
+        statuses: ["applied"],
+        sort: ApplicationSort.Company,
+        direction: SortDirection.Ascending,
+      }),
+    );
+    // The shared user's count of applied applications varies with other tests.
+    const appliedChip = new RegExp(`^${t.status.applied} \\d+$`);
+    await expect(page.getByRole("button", { name: appliedChip })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await expect(page.getByRole("link", { name: t.filters.clear })).toBeVisible();
+
+    await expectNoViolations(page);
   });
 
   test.describe("in the dark theme", () => {

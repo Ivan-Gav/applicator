@@ -15,15 +15,15 @@ const t = messages.applications;
 /** A chain of steps, oldest first, that wraps onto further lines. */
 export function StatusHistory({ events, timeZone }: StatusHistoryProps) {
   return (
-    <section aria-labelledby="status-history-title" className="flex flex-col gap-3">
+    <section aria-labelledby="status-history-title" className="flex flex-col gap-3.5">
       <h2 id="status-history-title" className="text-xl font-medium">
         {t.page.history}
       </h2>
-      <ol className="flex flex-wrap items-center gap-y-3 text-sm">
+      <ol className="flex flex-wrap items-center gap-y-2.5 text-sm">
         {events.map((event, index) => (
           // The journal is append-only and a status may repeat at the same instant.
           <li key={index} className="flex items-center">
-            {index > 0 && <span aria-hidden className="mx-3 h-px w-6 bg-input" />}
+            {index > 0 && <span aria-hidden className="mx-2.5 h-px w-7 bg-border" />}
             <span className="flex items-center gap-2">
               <StatusSwatch status={event.status} />
               <span className="font-semibold">{t.status[event.status]}</span>

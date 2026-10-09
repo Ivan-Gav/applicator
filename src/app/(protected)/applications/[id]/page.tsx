@@ -50,29 +50,31 @@ export default async function ApplicationPage({ params }: PageProps<"/applicatio
 
   return (
     <PageColumn width={ColumnWidth.Narrow}>
-      <Link
-        href={applicationsPath()}
-        className="self-start text-[13px] text-muted-foreground underline-offset-4 hover:underline"
-      >
-        {t.back}
-      </Link>
-      <div className="flex flex-col gap-1">
-        <h1 className="text-[30px] leading-tight font-semibold">{application.companyName}</h1>
-        <p className="text-lg text-muted-foreground">{application.positionTitle}</p>
-      </div>
+      <div className="flex flex-col gap-4.5">
+        <Link
+          href={applicationsPath()}
+          className="self-start text-[13px] text-muted-foreground underline-offset-4 hover:underline"
+        >
+          {t.back}
+        </Link>
+        <div className="flex flex-col gap-1">
+          <h1 className="text-[30px] leading-tight font-semibold">{application.companyName}</h1>
+          <p className="text-lg text-muted-foreground">{application.positionTitle}</p>
+        </div>
 
-      <div className="flex flex-wrap items-start gap-x-8 gap-y-3">
-        <StatusTag
-          application={application}
-          changeStatus={changeApplicationStatus}
-          size={StatusTagSize.Page}
-        />
-        <ApplicationFacts application={application} timeZone={timeZone} now={new Date()} />
+        <div className="flex flex-wrap items-center gap-x-7 gap-y-3">
+          <StatusTag
+            application={application}
+            changeStatus={changeApplicationStatus}
+            size={StatusTagSize.Page}
+          />
+          <ApplicationFacts application={application} timeZone={timeZone} now={new Date()} />
+        </div>
       </div>
 
       <StatusHistory events={history} timeZone={timeZone} />
 
-      <section aria-labelledby="application-details-title" className="flex flex-col gap-4">
+      <section aria-labelledby="application-details-title" className="flex flex-col gap-4.5">
         <h2 id="application-details-title" className="text-xl font-medium">
           {t.page.details}
         </h2>

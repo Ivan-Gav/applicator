@@ -6,7 +6,7 @@ import {
   ApplicationsView,
   routes,
 } from "@/app/routes";
-import { defaultListQuery } from "@/domain/application/list";
+import { ApplicationSort, defaultListQuery, SortDirection } from "@/domain/application/list";
 import { likelyNextStatuses, otherNextStatuses } from "@/domain/application/rules";
 import type { ApplicationStatus } from "@/domain/application/model";
 import { formatDay } from "@/lib/date";
@@ -245,4 +245,77 @@ test("the list shows a page at a time, and the server applies what the URL asks 
     applicationsPath(ApplicationsView.Active, { ...defaultListQuery, search: "nowhere" }),
   );
   await expect(page.getByRole("heading", { name: t.nothingMatches.title })).toBeVisible();
+});
+
+test("search, filters and order live in the URL and survive a reload", async ({ page }) => {
+  const day = 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  await seedApplications(page.request, [
+    {
+      companyName: "Initech",
+      positionTitle: "SRE",
+      status: "applied",
+      appliedAt: new Date(now - 5 * day),
+    },
+    {
+      companyName: "Globex",
+      positionTitle: "Engineer",
+      status: "interview",
+      appliedAt: new Date(now - 9 * day),
+    },
+    {
+      companyName: "Acme",
+      positionTitle: "Engineer",
+      status: "applied",
+      appliedAt: new Date(now - 60 * day),
+    },
+    {
+      companyName: "Hooli",
+      positionTitle: "Engineer",
+      status: "rejected",
+      appliedAt: new Date(now - 30 * day),
+    },
+  ]);
+  // Each row's one link reads company, then position.
+  const companies = () =>
+    page.getByRole("table", { name: t.title }).getByRole("cell").getByRole("link");
+  const startingWith = (names: string[]) => names.map((name) => new RegExp(`^${name}`));
+  await page.goto(routes.applications);
+
+  // Searching as one types, then clearing it.
+  await page.getByRole("searchbox", { name: t.search.label }).fill("glo");
+  await expect(page).toHaveURL(
+    isAt(applicationsPath(ApplicationsView.Active, { ...defaultListQuery, search: "glo" })),
+  );
+  await expect(companies()).toHaveText(startingWith(["Globex"]));
+  await page.getByRole("link", { name: t.filters.clear }).click();
+  await expect(page.getByRole("searchbox", { name: t.search.label })).toHaveValue("");
+  await expect(companies()).toHaveCount(4);
+
+  // A status filter and an order, both kept in the URL.
+  const applied = page.getByRole("button", { name: `${t.status.applied} 2` });
+  await applied.click();
+  await expect(applied).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("link", { name: t.columns.company }).click();
+  const filteredAndOrdered = applicationsPath(ApplicationsView.Active, {
+    ...defaultListQuery,
+    statuses: ["applied"],
+    sort: ApplicationSort.Company,
+    direction: SortDirection.Ascending,
+  });
+  await expect(page).toHaveURL(isAt(filteredAndOrdered));
+  await expect(companies()).toHaveText(startingWith(["Acme", "Initech"]));
+
+  await page.reload();
+  await expect(applied).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("columnheader", { name: t.columns.company })).toHaveAttribute(
+    "aria-sort",
+    "ascending",
+  );
+  await expect(companies()).toHaveText(startingWith(["Acme", "Initech"]));
+  await expect(page.getByText(t.countFiltered(2, 4))).toBeVisible();
+
+  // Clearing the filters keeps the order.
+  await page.getByRole("link", { name: t.filters.clear }).click();
+  await expect(companies()).toHaveText(startingWith(["Acme", "Globex", "Hooli", "Initech"]));
 });

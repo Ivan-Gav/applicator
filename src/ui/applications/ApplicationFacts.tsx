@@ -24,7 +24,7 @@ export function ApplicationFacts({ application, timeZone, now }: ApplicationFact
   );
 
   return (
-    <dl className="flex flex-wrap gap-x-8 gap-y-3">
+    <dl className="flex flex-wrap gap-x-7 gap-y-3">
       <Fact label={t.page.appliedAt}>
         {application.appliedAt ? day(application.appliedAt) : t.notApplied}
       </Fact>
@@ -33,7 +33,7 @@ export function ApplicationFacts({ application, timeZone, now }: ApplicationFact
       </Fact>
       <Fact label={t.page.waiting}>
         <span className="font-mono">
-          <WaitingDays days={daysWithoutResponse(application, now)} />
+          <WaitingDays days={daysWithoutResponse(application, now)} spelledOut />
         </span>
       </Fact>
       {application.archivedAt && (

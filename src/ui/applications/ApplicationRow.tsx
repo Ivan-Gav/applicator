@@ -34,14 +34,17 @@ export function ApplicationRow({ application, href, timeZone, now, actions }: Ap
     <TableRow className="relative hover:bg-accent">
       <TableCell>
         {application.appliedAt ? (
-          <time dateTime={isoDay(application.appliedAt, timeZone)} className="font-mono">
+          <time
+            dateTime={isoDay(application.appliedAt, timeZone)}
+            className="font-mono text-[13px]"
+          >
             {formatDay(application.appliedAt, timeZone)}
           </time>
         ) : (
           <span className="text-muted-foreground">{t.notApplied}</span>
         )}
       </TableCell>
-      <TableCell className="whitespace-normal">
+      <TableCell className="min-w-65 whitespace-normal">
         {/* The one link of the row; its ::after covers the whole row. */}
         <Link
           href={href}
@@ -68,7 +71,7 @@ export function ApplicationRow({ application, href, timeZone, now, actions }: Ap
           <StatusTag application={application} changeStatus={actions.changeStatus} />
         </div>
       </TableCell>
-      <TableCell className="text-right font-mono">
+      <TableCell className="text-right font-mono text-[13px]">
         <WaitingDays days={daysWithoutResponse(application, now)} />
       </TableCell>
       <TableCell>

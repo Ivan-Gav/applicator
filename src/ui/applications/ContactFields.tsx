@@ -6,6 +6,7 @@ import type { CreateApplicationInput } from "@/domain/application/schema";
 import { Field, FieldError, FieldLabel } from "@/ui/kit/field";
 import { Input } from "@/ui/kit/input";
 import { messages } from "@/ui/messages";
+import { panel, panelSummary } from "./panel";
 
 export type ContactFieldsProps = {
   register: UseFormRegister<CreateApplicationInput>;
@@ -18,12 +19,15 @@ export type ContactFieldsProps = {
 
 const t = messages.applications.form.contact;
 
+// Addresses and numbers read better in a fixed-width face.
+const mono = "font-mono text-[13px] md:text-[13px]";
+
 const inputProps = {
   name: { autoComplete: "off" },
   role: { autoComplete: "off" },
-  email: { type: "email", inputMode: "email", autoComplete: "off" },
-  phone: { type: "tel", inputMode: "tel", autoComplete: "off" },
-  url: { type: "url", inputMode: "url", autoComplete: "off" },
+  email: { type: "email", inputMode: "email", autoComplete: "off", className: mono },
+  phone: { type: "tel", inputMode: "tel", autoComplete: "off", className: mono },
+  url: { type: "url", inputMode: "url", autoComplete: "off", className: mono },
 } as const satisfies Record<ContactPart, object>;
 
 export function ContactFields({
@@ -37,13 +41,15 @@ export function ContactFields({
     <details
       open={open}
       onToggle={(event) => onOpenChange(event.currentTarget.open)}
-      className="rounded-lg border px-4 py-3"
+      className={panel}
     >
-      <summary className="cursor-pointer font-medium">
-        {t.title}
-        {summary && <span className="ml-2 font-normal text-muted-foreground">{summary}</span>}
+      <summary className={panelSummary}>
+        <span>{t.title}</span>
+        {summary && (
+          <span className="text-[13px] font-normal text-muted-foreground">{summary}</span>
+        )}
       </summary>
-      <div className="mt-4 grid gap-5 sm:grid-cols-2">
+      <div className="mt-3 grid gap-3.5 sm:grid-cols-2">
         {contactParts.map((part) => {
           const id = `contact-${part}`;
           const errorId = `${id}-error`;

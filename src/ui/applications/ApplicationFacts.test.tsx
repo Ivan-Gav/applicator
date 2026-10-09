@@ -28,7 +28,7 @@ describe("ApplicationFacts", () => {
     expect(facts).toEqual({
       [t.page.appliedAt]: formatDay(appliedAt, timeZone),
       [t.page.lastContactAt]: formatDay(new Date("2026-09-05T10:00:00.000Z"), timeZone),
-      [t.page.waiting]: `${t.waiting.days(10)}${t.waiting.daysSpoken(10)}`,
+      [t.page.waiting]: t.waiting.daysSpoken(10),
     });
     expect(screen.getByText(formatDay(appliedAt, timeZone))).toHaveAttribute(
       "datetime",

@@ -4,7 +4,11 @@ import type { Application } from "@/domain/application/model";
 import { formatDay } from "@/lib/date";
 import { anApplication } from "@/test/application.fixture";
 import { messages } from "@/ui/messages";
-import { ApplicationList } from "./ApplicationList";
+import { ApplicationSort, SortDirection } from "@/domain/application/list";
+import { type ApplicationListControls, ApplicationList, type SortLink } from "./ApplicationList";
+
+// The search and the filter chips navigate through the router.
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }));
 
 const t = messages.applications;
 // Midnight in Berlin on 1 September; still 31 August in UTC.
@@ -19,11 +23,40 @@ const actions = {
   delete: vi.fn(),
 };
 
-type ListOptions = { archived?: boolean; nothingMatches?: boolean; showMoreHref?: string | null };
+type ListOptions = {
+  archived?: boolean;
+  nothingMatches?: boolean;
+  showMoreHref?: string | null;
+  controls?: ApplicationListControls | null;
+};
+
+// Ordered by the applied day, newest first, as by default.
+const sorting = Object.fromEntries(
+  Object.values(ApplicationSort).map((sort) => [
+    sort,
+    {
+      href: `/list?sort=${sort}`,
+      direction: sort === ApplicationSort.AppliedAt ? SortDirection.Descending : null,
+    },
+  ]),
+) as Record<ApplicationSort, SortLink>;
+
+const controls: ApplicationListControls = {
+  search: { action: "/list", name: "q", value: "", hiddenFields: [] },
+  filters: { statuses: [], waitingLong: null, clearHref: null },
+  total: 28,
+  matching: 15,
+  filtered: true,
+};
 
 function renderList(
   applications: Application[],
-  { archived = false, nothingMatches = false, showMoreHref = null }: ListOptions = {},
+  {
+    archived = false,
+    nothingMatches = false,
+    showMoreHref = null,
+    controls = null,
+  }: ListOptions = {},
 ) {
   render(
     <ApplicationList
@@ -31,6 +64,8 @@ function renderList(
       archived={archived}
       nothingMatches={nothingMatches}
       showMoreHref={showMoreHref}
+      controls={controls}
+      sorting={sorting}
       addHref="/new"
       activeHref="/list"
       archivedHref="/list?view=archived"
@@ -86,7 +121,7 @@ describe("ApplicationList", () => {
         .getAllByRole("columnheader")
         .map((header) => header.textContent),
     ).toEqual([
-      t.columns.appliedAt,
+      `${t.columns.appliedAt}${t.sortIndicator.desc}`,
       t.columns.company,
       t.columns.city,
       t.columns.status,
@@ -220,5 +255,39 @@ describe("ApplicationList", () => {
     renderList([anApplication()]);
 
     expect(screen.queryByRole("link", { name: t.showMore })).not.toBeInTheDocument();
+  });
+
+  it("marks the column the list is ordered by, and links every header to its order", () => {
+    renderList([anApplication()]);
+
+    const applied = screen.getByRole("columnheader", { name: t.columns.appliedAt });
+    expect(applied).toHaveAttribute("aria-sort", "descending");
+    expect(screen.getByRole("columnheader", { name: t.columns.city })).not.toHaveAttribute(
+      "aria-sort",
+    );
+    expect(screen.getByRole("link", { name: t.columns.city })).toHaveAttribute(
+      "href",
+      "/list?sort=city",
+    );
+  });
+
+  it("counts what the filters let through out of the whole view", () => {
+    renderList([anApplication()], { controls });
+
+    expect(screen.getByRole("search")).toBeVisible();
+    expect(screen.getByText(t.countFiltered(15, 28))).toBeVisible();
+  });
+
+  it("counts the whole view while nothing filters it", () => {
+    renderList([anApplication()], { controls: { ...controls, filtered: false, matching: 28 } });
+
+    expect(screen.getByText(t.count(28))).toBeVisible();
+  });
+
+  it("offers no search or filters for an empty view", () => {
+    renderList([]);
+
+    expect(screen.queryByRole("search")).not.toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: t.filters.label })).not.toBeInTheDocument();
   });
 });

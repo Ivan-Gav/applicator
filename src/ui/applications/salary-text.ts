@@ -1,4 +1,10 @@
-import { type Salary, type SalaryRange, SalaryRangeKind } from "@/domain/application/model";
+import {
+  type Salary,
+  type SalaryPeriod,
+  type SalaryRange,
+  SalaryRangeKind,
+  salaryPeriods,
+} from "@/domain/application/model";
 import { salaryRangeShape } from "@/domain/application/rules";
 import { messages } from "@/ui/messages";
 
@@ -30,4 +36,26 @@ export function salaryText(range: SalaryRange, units: Pick<Salary, "currency" | 
     case SalaryRangeKind.UpTo:
       return withUnits(t.range.up_to({ max: amountFormat.format(shape.max) }), units);
   }
+}
+
+/**
+ * The advertised amount from the salary form's raw values, for the panel's
+ * summary line: "70,000–84,000 EUR per year", or "" while it is unknown or
+ * not yet a number.
+ */
+export function advertisedSalaryText([min, max, currency, period]: readonly unknown[]): string {
+  const amount = (value: unknown) => (typeof value === "number" ? value : null);
+  const range = { min: amount(min), max: amount(max) };
+  if (salaryRangeShape(range).kind === SalaryRangeKind.Unknown || !isSalaryPeriod(period)) {
+    return "";
+  }
+  return salaryText(range, {
+    currency:
+      typeof currency === "string" && currency.trim() !== "" ? currency.toUpperCase() : null,
+    period,
+  });
+}
+
+function isSalaryPeriod(value: unknown): value is SalaryPeriod {
+  return salaryPeriods.some((period) => period === value);
 }

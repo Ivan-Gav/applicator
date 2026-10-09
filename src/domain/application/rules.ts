@@ -14,7 +14,7 @@ const likelyTransitions: Readonly<Record<ApplicationStatus, readonly Application
   applied: ["screening", "assignment", "interview", "rejected", "withdrawn"],
   screening: ["assignment", "interview", "rejected", "withdrawn"],
   assignment: ["interview", "offer", "rejected", "withdrawn"],
-  interview: ["interview", "offer", "rejected", "withdrawn"],
+  interview: ["assignment", "interview", "offer", "rejected", "withdrawn"],
   offer: ["rejected", "withdrawn"],
   rejected: [],
   withdrawn: [],

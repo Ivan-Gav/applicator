@@ -27,6 +27,7 @@ describe("likelyNextStatuses", () => {
       "withdrawn",
     ]);
     expect(likelyNextStatuses("interview")).toEqual([
+      "assignment",
       "interview",
       "offer",
       "rejected",

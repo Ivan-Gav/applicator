@@ -99,7 +99,19 @@ export function StatusTag({
             aria-label={s.trigger(label, t.name(application))}
           >
             <span>{label}</span>
-            <span aria-hidden>▾</span>
+            <svg
+              aria-hidden
+              focusable="false"
+              width="8"
+              height="8"
+              viewBox="0 0 8 8"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              className="shrink-0 opacity-80"
+            >
+              <path d="M1 2.5l3 3 3-3" />
+            </svg>
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
