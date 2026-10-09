@@ -2,6 +2,8 @@ export const applicationStatuses = [
   "draft",
   "applied",
   "screening",
+  // A take-home task. Its date is the status history's; the interview table holds conversations only.
+  "assignment",
   "interview",
   "offer",
   "rejected",
@@ -105,8 +107,6 @@ export type StatusEvent = {
 export const StatusChangeFailure = {
   // The request does not describe a status change.
   Invalid: "invalid",
-  // isStatusTransitionAllowed() refuses the move.
-  Illegal: "illegal",
   // The application is gone, or its status changed since it was read.
   Outdated: "outdated",
 } as const;

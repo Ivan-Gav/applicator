@@ -76,7 +76,7 @@ const editableFields = {
 export const createApplicationSchema = z.object({
   companyName: editableFields.companyName,
   positionTitle: editableFields.positionTitle,
-  // Any status may start a record; isStatusTransitionAllowed() governs only later changes.
+  // Any status may start a record, as any status may follow any other.
   status: applicationStatusSchema.default("draft"),
   appliedAt: optionalInstant.default(null),
   seniority: editableFields.seniority.default(null),

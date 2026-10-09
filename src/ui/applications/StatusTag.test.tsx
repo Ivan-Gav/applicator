@@ -8,7 +8,7 @@ import {
   applicationStatuses,
   StatusChangeFailure,
 } from "@/domain/application/model";
-import { isFinalStatus, nextStatuses } from "@/domain/application/rules";
+import { likelyNextStatuses, otherNextStatuses } from "@/domain/application/rules";
 import type { StatusChange } from "@/domain/application/schema";
 import { anApplication } from "@/test/application.fixture";
 import { messages } from "@/ui/messages";
@@ -17,7 +17,6 @@ import { StatusTag } from "./StatusTag";
 const t = messages.applications;
 const s = t.statusChange;
 const name = t.name({ companyName: "Acme", positionTitle: "Engineer" });
-const openStatuses = applicationStatuses.filter((status) => !isFinalStatus(status));
 
 function renderTag(application: Application) {
   const changeStatus = vi.fn<
@@ -37,45 +36,51 @@ async function openMenu(user: ReturnType<typeof userEvent.setup>, status: Applic
 }
 
 describe("StatusTag", () => {
-  it.each(openStatuses)("shows %s as a menu button led by its label", (status) => {
+  it.each(applicationStatuses)("shows %s as a menu button led by its label", (status) => {
     renderTag(anApplication({ status }));
 
     expect(trigger(status)).toHaveAttribute("aria-haspopup", "menu");
     expect(trigger(status)).toHaveTextContent(t.status[status]);
   });
 
-  it.each(["rejected", "withdrawn"] as const)("shows %s as plain status text", (status) => {
-    renderTag(anApplication({ status }));
+  it.each(applicationStatuses)(
+    "offers from %s the likely moves first, then every other status past a separator",
+    async (status) => {
+      const { user } = renderTag(anApplication({ status }));
+      const likely = likelyNextStatuses(status);
 
-    expect(screen.getByRole("status", { name: t.status[status] })).toBeVisible();
-    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+      const menu = await openMenu(user, status);
+
+      expect(within(menu).getByRole("group", { name: s.menuTitle })).toBeVisible();
+      expect(
+        within(menu)
+          .getAllByRole("menuitem")
+          .map((item) => item.textContent),
+      ).toEqual([
+        ...likely.map((to) => (to === status ? s.again(t.status[to]) : t.status[to])),
+        ...otherNextStatuses(status).map((to) => t.status[to]),
+      ]);
+      expect(within(menu).queryAllByRole("separator")).toHaveLength(likely.length > 0 ? 1 : 0);
+    },
+  );
+
+  it("moves a closed application on, as when an offer follows a rejection", async () => {
+    const { changeStatus, user } = renderTag(anApplication({ status: "rejected" }));
+
+    const menu = await openMenu(user, "rejected");
+    await user.click(within(menu).getByRole("menuitem", { name: t.status.offer }));
+
+    expect(changeStatus).toHaveBeenCalledExactlyOnceWith("00000000-0000-4000-8000-0000000000a1", {
+      status: "offer",
+    });
   });
 
-  it.each(openStatuses)("offers from %s exactly the moves the domain allows", async (status) => {
-    const { user } = renderTag(anApplication({ status }));
-
-    const menu = await openMenu(user, status);
-
-    expect(within(menu).getByRole("group", { name: s.menuTitle })).toBeVisible();
-    expect(
-      within(menu)
-        .getAllByRole("menuitem")
-        .map((item) => item.textContent),
-    ).toEqual(
-      nextStatuses(status).map((to) => (to === status ? s.again(t.status[to]) : t.status[to])),
-    );
-  });
-
-  it("calls a repeated interview another round", async () => {
+  it("calls a repeated interview another round, and offers it first", async () => {
     const { user } = renderTag(anApplication({ status: "interview" }));
 
     const menu = await openMenu(user, "interview");
 
-    expect(
-      within(menu)
-        .getAllByRole("menuitem")
-        .map((item) => item.textContent),
-    ).toEqual([s.again(t.status.interview), t.status.offer, t.status.rejected, t.status.withdrawn]);
+    expect(within(menu).getAllByRole("menuitem")[0]).toHaveTextContent(s.again(t.status.interview));
   });
 
   it("moves at once to the status picked, sending only the status: the server dates it", async () => {
@@ -91,7 +96,7 @@ describe("StatusTag", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it.each([StatusChangeFailure.Illegal, StatusChangeFailure.Outdated, StatusChangeFailure.Invalid])(
+  it.each([StatusChangeFailure.Outdated, StatusChangeFailure.Invalid])(
     "explains a %s refusal",
     async (failure) => {
       const { changeStatus, user } = renderTag(anApplication({ status: "applied" }));

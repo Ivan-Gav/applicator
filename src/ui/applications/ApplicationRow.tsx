@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Application } from "@/domain/application/model";
-import { daysWithoutResponse, isFinalStatus } from "@/domain/application/rules";
+import { daysWithoutResponse, isClosedStatus } from "@/domain/application/rules";
 import { formatDay, isoDay } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { TableCell, TableRow } from "@/ui/kit/table";
@@ -51,7 +51,7 @@ export function ApplicationRow({ application, href, timeZone, now, actions }: Ap
           <span
             className={cn(
               "block font-semibold",
-              isFinalStatus(application.status) && "text-muted-foreground",
+              isClosedStatus(application.status) && "text-muted-foreground",
             )}
           >
             {application.companyName}

@@ -7,6 +7,7 @@ import {
   routes,
 } from "@/app/routes";
 import { defaultListQuery } from "@/domain/application/list";
+import { likelyNextStatuses, otherNextStatuses } from "@/domain/application/rules";
 import type { ApplicationStatus } from "@/domain/application/model";
 import { formatDay } from "@/lib/date";
 import { messages } from "@/ui/messages";
@@ -120,11 +121,10 @@ test("a status changed from the list is dated by the server and lands in the his
 
   await statusTag(page, "applied", "Hooli", "SRE").click();
   const menu = page.getByRole("menu");
-  await expect(menu.getByRole("menuitem")).toHaveText([
-    t.status.screening,
-    t.status.rejected,
-    t.status.withdrawn,
-  ]);
+  // The likely moves first, then every other status.
+  await expect(menu.getByRole("menuitem")).toHaveText(
+    [...likelyNextStatuses("applied"), ...otherNextStatuses("applied")].map((to) => t.status[to]),
+  );
   await menu.getByRole("menuitem", { name: t.status.screening }).click();
   await expect(statusTag(page, "screening", "Hooli", "SRE")).toBeVisible();
 

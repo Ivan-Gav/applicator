@@ -1,110 +1,79 @@
 import { describe, expect, it } from "vitest";
 import { anApplication } from "@/test/application.fixture";
-import { type ApplicationStatus, SalaryRangeKind } from "./model";
+import { applicationStatuses, SalaryRangeKind } from "./model";
 import {
-  IllegalStatusTransitionError,
-  isFinalStatus,
-  isStatusTransitionAllowed,
   daysWithoutResponse,
-  nextStatuses,
+  isClosedStatus,
+  isLikelyTransition,
+  likelyNextStatuses,
+  otherNextStatuses,
   salaryRangeShape,
   statusTransition,
 } from "./rules";
 
-const allStatuses: readonly ApplicationStatus[] = [
-  "draft",
-  "applied",
-  "screening",
-  "interview",
-  "offer",
-  "rejected",
-  "withdrawn",
-];
-
-const legalMoves: ReadonlyArray<[ApplicationStatus, ApplicationStatus]> = [
-  ["draft", "applied"],
-  ["draft", "withdrawn"],
-  ["applied", "screening"],
-  ["applied", "rejected"],
-  ["applied", "withdrawn"],
-  ["screening", "interview"],
-  ["screening", "rejected"],
-  ["screening", "withdrawn"],
-  ["interview", "interview"],
-  ["interview", "offer"],
-  ["interview", "rejected"],
-  ["interview", "withdrawn"],
-  ["offer", "rejected"],
-  ["offer", "withdrawn"],
-];
-
-const illegalMoves: ReadonlyArray<[ApplicationStatus, ApplicationStatus]> = [
-  ["draft", "draft"],
-  ["draft", "screening"],
-  ["draft", "interview"],
-  ["draft", "offer"],
-  ["draft", "rejected"],
-  ["applied", "draft"],
-  ["applied", "applied"],
-  ["applied", "interview"],
-  ["applied", "offer"],
-  ["screening", "applied"],
-  ["screening", "offer"],
-  ["interview", "screening"],
-  ["offer", "interview"],
-  ["offer", "offer"],
-];
-
-describe("isStatusTransitionAllowed", () => {
-  it.each(legalMoves)("allows %s -> %s", (from, to) => {
-    expect(isStatusTransitionAllowed(from, to)).toBe(true);
+describe("likelyNextStatuses", () => {
+  it.each(applicationStatuses)("lists from %s exactly what isLikelyTransition expects", (from) => {
+    expect(likelyNextStatuses(from)).toEqual(
+      applicationStatuses.filter((to) => isLikelyTransition(from, to)),
+    );
   });
 
-  it.each(illegalMoves)("forbids %s -> %s", (from, to) => {
-    expect(isStatusTransitionAllowed(from, to)).toBe(false);
+  it("lists the likely moves in process order", () => {
+    expect(likelyNextStatuses("applied")).toEqual([
+      "screening",
+      "assignment",
+      "interview",
+      "rejected",
+      "withdrawn",
+    ]);
+    expect(likelyNextStatuses("interview")).toEqual([
+      "interview",
+      "offer",
+      "rejected",
+      "withdrawn",
+    ]);
   });
 
-  it.each(["rejected", "withdrawn"] as const)("treats %s as terminal", (terminal) => {
-    for (const to of allStatuses) {
-      expect(isStatusTransitionAllowed(terminal, to)).toBe(false);
+  it("expects another round of interviews, but no other status twice", () => {
+    for (const status of applicationStatuses) {
+      expect(isLikelyTransition(status, status)).toBe(status === "interview");
     }
   });
 });
 
-describe("nextStatuses", () => {
-  it.each(allStatuses)("offers from %s exactly what isStatusTransitionAllowed allows", (from) => {
-    expect(nextStatuses(from)).toEqual(
-      allStatuses.filter((to) => isStatusTransitionAllowed(from, to)),
+describe("otherNextStatuses", () => {
+  it.each(applicationStatuses)(
+    "offers from %s, with the likely ones, every other status exactly once",
+    (from) => {
+      const offered = [...likelyNextStatuses(from), ...otherNextStatuses(from)];
+
+      expect(new Set(offered).size).toBe(offered.length);
+      expect(offered.filter((to) => to !== from).toSorted()).toEqual(
+        applicationStatuses.filter((to) => to !== from).toSorted(),
+      );
+    },
+  );
+
+  it("still offers every other status from a closed one, as an offer can follow a rejection", () => {
+    expect(otherNextStatuses("rejected")).toEqual(
+      applicationStatuses.filter((status) => status !== "rejected"),
     );
-  });
-
-  it("lists the moves in process order", () => {
-    expect(nextStatuses("applied")).toEqual(["screening", "rejected", "withdrawn"]);
-    expect(nextStatuses("interview")).toEqual(["interview", "offer", "rejected", "withdrawn"]);
-  });
-
-  it.each(["rejected", "withdrawn"] as const)("offers nothing from %s", (terminal) => {
-    expect(nextStatuses(terminal)).toEqual([]);
   });
 });
 
-describe("isFinalStatus", () => {
-  it.each(allStatuses)("calls %s final exactly when it offers no move", (status) => {
-    expect(isFinalStatus(status)).toBe(nextStatuses(status).length === 0);
-  });
-
-  it.each(["rejected", "withdrawn"] as const)("calls %s final", (status) => {
-    expect(isFinalStatus(status)).toBe(true);
+describe("isClosedStatus", () => {
+  it.each(applicationStatuses)("calls %s closed only if it is rejected or withdrawn", (status) => {
+    expect(isClosedStatus(status)).toBe(status === "rejected" || status === "withdrawn");
   });
 });
 
 describe("statusTransition", () => {
   const at = new Date("2026-03-10T12:00:00Z");
 
-  it.each(legalMoves)("moves %s -> %s, entered and contacted at the given time", (from, to) => {
-    const result = statusTransition(anApplication({ status: from }), to, at);
+  it("moves to any status, entered and contacted at the given time", () => {
+    const result = statusTransition(anApplication({ status: "rejected" }), "offer", at);
 
-    expect(result.status).toBe(to);
+    expect(result.status).toBe("offer");
     expect(result.statusChangedAt).toEqual(at);
     expect(result.lastContactAt).toEqual(at);
   });
@@ -135,6 +104,13 @@ describe("statusTransition", () => {
     expect(statusTransition(draft, "applied", at).appliedAt).toEqual(at);
   });
 
+  it("keeps the date it was sent when it moves back to applied, as after a mis-click", () => {
+    const appliedAt = new Date("2026-03-01T09:00:00Z");
+    const rejected = anApplication({ status: "rejected", appliedAt });
+
+    expect(statusTransition(rejected, "applied", at).appliedAt).toEqual(appliedAt);
+  });
+
   it("keeps the original appliedAt on later moves", () => {
     const appliedAt = new Date("2026-03-01T09:00:00Z");
     const applied = anApplication({ status: "applied", appliedAt });
@@ -155,28 +131,6 @@ describe("statusTransition", () => {
     const original = anApplication({ status: "interview" });
 
     expect(statusTransition(original, "interview", at)).not.toBe(original);
-  });
-
-  it.each(illegalMoves)("throws IllegalStatusTransitionError for %s -> %s", (from, to) => {
-    const attempt = () => statusTransition(anApplication({ status: from }), to, at);
-
-    expect(attempt).toThrow(IllegalStatusTransitionError);
-    expect(attempt).toThrow(`Cannot transition application from "${from}" to "${to}"`);
-  });
-
-  it("exposes the attempted move on the error", () => {
-    let caught: unknown;
-    try {
-      statusTransition(anApplication({ status: "offer" }), "interview", at);
-    } catch (error) {
-      caught = error;
-    }
-
-    expect(caught).toBeInstanceOf(IllegalStatusTransitionError);
-    const error = caught as IllegalStatusTransitionError;
-    expect(error.name).toBe("IllegalStatusTransitionError");
-    expect(error.from).toBe("offer");
-    expect(error.to).toBe("interview");
   });
 });
 

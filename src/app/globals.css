@@ -118,6 +118,10 @@
   --status-screening-bg: #3f7a24;
   --status-screening-fg: #f5fae4;
   --status-screening-border: transparent;
+  /* midway between screening and interview on the ramp */
+  --status-assignment-bg: #689912;
+  --status-assignment-fg: #052203;
+  --status-assignment-border: transparent;
   --status-interview-bg: #90b800;
   --status-interview-fg: #052203;
   --status-interview-border: #052203;
@@ -182,6 +186,9 @@
   --status-screening-bg: #2f6a17;
   --status-screening-fg: #f2f7dc;
   --status-screening-border: transparent;
+  --status-assignment-bg: #689912;
+  --status-assignment-fg: #14200a;
+  --status-assignment-border: transparent;
   --status-interview-bg: #90b800;
   --status-interview-fg: #14200a;
   --status-interview-border: transparent;

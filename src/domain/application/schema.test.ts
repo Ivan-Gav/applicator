@@ -17,12 +17,18 @@ function issuesAt(result: { success: boolean; error?: { issues: { path: Property
 }
 
 describe("applicationStatusSchema", () => {
-  it.each(["draft", "applied", "screening", "interview", "offer", "rejected", "withdrawn"])(
-    "accepts %s",
-    (status) => {
-      expect(applicationStatusSchema.parse(status)).toBe(status);
-    },
-  );
+  it.each([
+    "draft",
+    "applied",
+    "screening",
+    "assignment",
+    "interview",
+    "offer",
+    "rejected",
+    "withdrawn",
+  ])("accepts %s", (status) => {
+    expect(applicationStatusSchema.parse(status)).toBe(status);
+  });
 
   it("rejects a status outside the allowed set", () => {
     expect(applicationStatusSchema.safeParse("ghosted").success).toBe(false);
@@ -287,6 +293,7 @@ describe("createApplicationSchema", () => {
     "draft",
     "applied",
     "screening",
+    "assignment",
     "interview",
     "offer",
     "rejected",

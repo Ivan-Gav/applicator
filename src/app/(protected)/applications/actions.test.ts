@@ -195,7 +195,7 @@ describe("changeApplicationStatus", () => {
     vi.useRealTimers();
   });
 
-  it("moves a legal step, dated now, and records it as contact", async () => {
+  it("moves to the chosen status, dated now, and records it as contact", async () => {
     const created = await seed({ status: "applied" });
 
     await expect(changeApplicationStatus(created.id, { status: "screening" })).resolves.toBeNull();
@@ -221,33 +221,12 @@ describe("changeApplicationStatus", () => {
     expect((await stored(created.id))?.lastContactAt).toEqual(friday);
   });
 
-  // What a request that bypasses the UI can send: any status for any record.
-  it.each([
-    ["applied", "offer"],
-    ["applied", "draft"],
-    ["offer", "interview"],
-    ["rejected", "applied"],
-    ["withdrawn", "interview"],
-  ] as const)("refuses %s -> %s and stores nothing", async (from, to) => {
-    const created = await seed({ status: from });
+  it("stores any move, an unlikely one included", async () => {
+    const created = await seed({ status: "rejected" });
 
-    await expect(changeApplicationStatus(created.id, { status: to })).resolves.toBe(
-      StatusChangeFailure.Illegal,
-    );
+    await expect(changeApplicationStatus(created.id, { status: "offer" })).resolves.toBeNull();
 
-    expect(await stored(created.id)).toEqual(created);
-    expect(await repository.statusHistory(sessionUser.id, created.id)).toHaveLength(1);
-    expect(revalidatePath).not.toHaveBeenCalled();
-  });
-
-  it("judges the move against the stored status, not what the caller claims", async () => {
-    const created = await seed({ status: "applied" });
-
-    await expect(
-      changeApplicationStatus(created.id, { status: "offer", from: "interview" }),
-    ).resolves.toBe(StatusChangeFailure.Illegal);
-
-    expect((await stored(created.id))?.status).toBe("applied");
+    expect((await stored(created.id))?.status).toBe("offer");
   });
 
   it.each([

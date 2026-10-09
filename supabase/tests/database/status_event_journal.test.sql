@@ -112,8 +112,7 @@ select results_eq(
   'the same status at a new instant is journalled as a new round'
 );
 
--- Legality is the domain's call: the journal records even a move that
--- isStatusTransitionAllowed() would refuse.
+-- The journal records any move, an unlikely one included.
 update public.application
 set status = 'draft'
 where id = '00000000-0000-4000-8000-0000000000a1';

@@ -5,8 +5,8 @@ import { notFound, redirect } from "next/navigation";
 import { applicationRepositoryForRequest } from "@/adapters/supabase/application.repository";
 import { requireUser } from "@/app/auth/_utils/require-user";
 import { routes } from "@/app/routes";
-import { type Application, StatusChangeFailure } from "@/domain/application/model";
-import { IllegalStatusTransitionError, statusTransition } from "@/domain/application/rules";
+import { StatusChangeFailure } from "@/domain/application/model";
+import { statusTransition } from "@/domain/application/rules";
 import {
   type ApplicationRejection,
   applicationIdSchema,
@@ -64,9 +64,8 @@ export async function updateApplication(
 }
 
 /**
- * Moves an application to another status, dated now. Legality is decided here
- * against the stored status, whatever the caller offered. Resolves with `null`
- * once stored.
+ * Moves an application to any status, dated now. Stored only while the status
+ * is still the one just read; resolves with `null` once stored.
  */
 export async function changeApplicationStatus(
   id: unknown,
@@ -83,15 +82,7 @@ export async function changeApplicationStatus(
   if (!current) {
     return StatusChangeFailure.Outdated;
   }
-  let moved: Application;
-  try {
-    moved = statusTransition(current, change.data.status, new Date());
-  } catch (error) {
-    if (error instanceof IllegalStatusTransitionError) {
-      return StatusChangeFailure.Illegal;
-    }
-    throw error;
-  }
+  const moved = statusTransition(current, change.data.status, new Date());
   if (!(await repository.recordStatusTransition(user.id, current.status, moved))) {
     return StatusChangeFailure.Outdated;
   }

@@ -152,10 +152,21 @@ that changes it, inside the same transaction and carrying the row's `user_id`
 so RLS covers the journal. Code writes `status` only; it never inserts into
 `status_event` itself.
 
-**Transition rules stay in the domain.** Whether a move from one status to
-another is legal is decided by `isStatusTransitionAllowed` in
-`src/domain/application/rules.ts`. The trigger only journals what happened.
-Never move rule logic into the database.
+**Any status may follow any status.** Nothing refuses a status change: not
+the domain, not the server action, not the database. Real processes break any
+fixed path (an offer after a rejection, an offer without an interview, a
+recruiter skipping stages), correcting a mis-click is itself a transition, and
+the record has one user with no one else's mistakes to guard against. Do not
+reintroduce a restriction.
+
+What remains is a suggestion: `isLikelyTransition` and `likelyNextStatuses` in
+`src/domain/application/rules.ts` say which moves usually come next, and the
+status menu lists those first. That knowledge stays in the domain; the trigger
+only journals what happened and the CHECKs only list the values.
+
+**`assignment` is a take-home task**, recorded by the status alone and dated
+by the status history. The `interview` table records conversations; an
+assignment is not one, so it is neither an interview `format` nor a `kind`.
 
 ### Dates and time zones
 

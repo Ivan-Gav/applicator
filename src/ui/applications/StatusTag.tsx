@@ -7,7 +7,7 @@ import type {
   ApplicationStatus,
   StatusChangeFailure,
 } from "@/domain/application/model";
-import { nextStatuses } from "@/domain/application/rules";
+import { likelyNextStatuses, otherNextStatuses } from "@/domain/application/rules";
 import type { StatusChange } from "@/domain/application/schema";
 import { cn } from "@/lib/utils";
 import { useHydrated } from "@/ui/hooks/use-hydrated";
@@ -17,6 +17,7 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/ui/kit/dropdown-menu";
 import { messages } from "@/ui/messages";
@@ -45,8 +46,8 @@ const t = messages.applications;
 const s = t.statusChange;
 
 /**
- * The status, and the control that changes it: a menu of the moves the domain
- * allows, applied at once. A final status offers none and is plain text.
+ * The status, and the control that changes it: a menu of every other status,
+ * the likely next ones first, applied at once.
  */
 export function StatusTag({
   application,
@@ -55,7 +56,8 @@ export function StatusTag({
 }: StatusTagProps) {
   const { status } = application;
   const label = t.status[status];
-  const options = nextStatuses(status);
+  const likely = likelyNextStatuses(status);
+  const others = otherNextStatuses(status);
   const [open, setOpen] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const [saving, startSaving] = useTransition();
@@ -67,14 +69,6 @@ export function StatusTag({
     setMenuContainer(trigger?.closest("main") ?? null);
   }, []);
   const tagClass = cn(styles.tag, size === StatusTagSize.Page && styles.page);
-
-  if (options.length === 0) {
-    return (
-      <span role="status" aria-label={label} data-status={status} className={tagClass}>
-        {label}
-      </span>
-    );
-  }
 
   function move(to: ApplicationStatus) {
     setFailure(null);
@@ -117,10 +111,17 @@ export function StatusTag({
         >
           <DropdownMenuGroup aria-labelledby={menuTitleId}>
             <DropdownMenuLabel id={menuTitleId}>{s.menuTitle}</DropdownMenuLabel>
-            {options.map((to) => (
+            {likely.map((to) => (
               <DropdownMenuItem key={to} onSelect={() => move(to)}>
                 <StatusSwatch status={to} />
                 {to === status ? s.again(t.status[to]) : t.status[to]}
+              </DropdownMenuItem>
+            ))}
+            {likely.length > 0 && <DropdownMenuSeparator />}
+            {others.map((to) => (
+              <DropdownMenuItem key={to} onSelect={() => move(to)}>
+                <StatusSwatch status={to} />
+                {t.status[to]}
               </DropdownMenuItem>
             ))}
           </DropdownMenuGroup>

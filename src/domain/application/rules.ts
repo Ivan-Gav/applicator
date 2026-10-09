@@ -7,76 +7,65 @@ import {
   type SalaryRangeShape,
 } from "./model";
 
-const allowedStatusTransitions: Readonly<Record<ApplicationStatus, readonly ApplicationStatus[]>> =
-  {
-    draft: ["applied", "withdrawn"],
-    applied: ["screening", "rejected", "withdrawn"],
-    screening: ["interview", "rejected", "withdrawn"],
-    interview: ["interview", "offer", "rejected", "withdrawn"],
-    offer: ["rejected", "withdrawn"],
-    rejected: [],
-    withdrawn: [],
-  };
+// Where an application usually goes next. A suggestion only: any status may
+// follow any other. `interview` repeats, one round each.
+const likelyTransitions: Readonly<Record<ApplicationStatus, readonly ApplicationStatus[]>> = {
+  draft: ["applied", "withdrawn"],
+  applied: ["screening", "assignment", "interview", "rejected", "withdrawn"],
+  screening: ["assignment", "interview", "rejected", "withdrawn"],
+  assignment: ["interview", "offer", "rejected", "withdrawn"],
+  interview: ["interview", "offer", "rejected", "withdrawn"],
+  offer: ["rejected", "withdrawn"],
+  rejected: [],
+  withdrawn: [],
+};
+
+// The application is over, for now: nothing is awaited from either side.
+const closedStatuses: readonly ApplicationStatus[] = ["rejected", "withdrawn"];
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
-/** Thrown by {@link statusTransition}; carries both ends of the attempted move. */
-export class IllegalStatusTransitionError extends Error {
-  override readonly name = "IllegalStatusTransitionError";
+export function isLikelyTransition(from: ApplicationStatus, to: ApplicationStatus): boolean {
+  return likelyTransitions[from].includes(to);
+}
 
-  constructor(
-    readonly from: ApplicationStatus,
-    readonly to: ApplicationStatus,
-  ) {
-    super(`Cannot transition application from "${from}" to "${to}"`);
-  }
+/** The statuses {@link isLikelyTransition} expects after `from`, in process order. */
+export function likelyNextStatuses(from: ApplicationStatus): readonly ApplicationStatus[] {
+  return applicationStatuses.filter((to) => isLikelyTransition(from, to));
+}
+
+/** Every status not likely after `from`, in process order; `from` itself is not a move. */
+export function otherNextStatuses(from: ApplicationStatus): readonly ApplicationStatus[] {
+  return applicationStatuses.filter((to) => to !== from && !isLikelyTransition(from, to));
+}
+
+export function isClosedStatus(status: ApplicationStatus): boolean {
+  return closedStatuses.includes(status);
 }
 
 /**
- * The status graph never returns to an earlier stage. `interview` may repeat,
- * so each round is its own event.
- */
-export function isStatusTransitionAllowed(from: ApplicationStatus, to: ApplicationStatus): boolean {
-  return allowedStatusTransitions[from].includes(to);
-}
-
-/** The statuses {@link isStatusTransitionAllowed} allows from `from`, in process order. */
-export function nextStatuses(from: ApplicationStatus): readonly ApplicationStatus[] {
-  return applicationStatuses.filter((to) => isStatusTransitionAllowed(from, to));
-}
-
-/** A final status allows no further move: the application is closed. */
-export function isFinalStatus(status: ApplicationStatus): boolean {
-  return !hasAllowedStatusTransitions(status);
-}
-
-/**
- * `at` is when the new status was entered. A status change also counts as a
- * contact, so `lastContactAt` becomes `at` as well.
- *
- * @throws {IllegalStatusTransitionError} when {@link isStatusTransitionAllowed} would return false.
+ * Moves an application to `to`, whatever its status. `at` is when the new
+ * status was entered. A status change also counts as a contact, so
+ * `lastContactAt` becomes `at` as well. The first move to `applied` dates
+ * the application; a later one, such as undoing a mis-click, keeps that date.
  */
 export function statusTransition(
   application: Application,
   to: ApplicationStatus,
   at: Date,
 ): Application {
-  if (!isStatusTransitionAllowed(application.status, to)) {
-    throw new IllegalStatusTransitionError(application.status, to);
-  }
-
   return {
     ...application,
     status: to,
     statusChangedAt: at,
-    appliedAt: to === "applied" ? at : application.appliedAt,
+    appliedAt: to === "applied" && application.appliedAt === null ? at : application.appliedAt,
     lastContactAt: at,
   };
 }
 
-/** `null` for a draft and for an application in a final status. */
+/** `null` for an application never sent and for a closed one. */
 export function daysWithoutResponse(application: Application, now: Date): number | null {
-  if (!hasAllowedStatusTransitions(application.status)) {
+  if (isClosedStatus(application.status)) {
     return null;
   }
 
@@ -87,10 +76,6 @@ export function daysWithoutResponse(application: Application, now: Date): number
 
   const elapsedDays = Math.floor((now.getTime() - since.getTime()) / MS_PER_DAY);
   return Math.max(0, elapsedDays);
-}
-
-function hasAllowedStatusTransitions(status: ApplicationStatus): boolean {
-  return allowedStatusTransitions[status].length > 0;
 }
 
 export function salaryRangeShape({ min, max }: SalaryRange): SalaryRangeShape {

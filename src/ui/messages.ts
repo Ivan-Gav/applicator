@@ -108,8 +108,6 @@ export const messages = {
       again: (status: string) => `${status} (another round)`,
       failure: {
         [StatusChangeFailure.Invalid]: "The status could not be changed. Choose one from the list.",
-        [StatusChangeFailure.Illegal]:
-          "This application cannot move to that status from where it stands now.",
         [StatusChangeFailure.Outdated]:
           "This application changed in the meantime. Reload the page and try again.",
       } satisfies Record<StatusChangeFailure, string>,
@@ -247,6 +245,7 @@ export const messages = {
       draft: "Draft",
       applied: "Applied",
       screening: "Screening",
+      assignment: "Assignment",
       interview: "Interview",
       offer: "Offer",
       rejected: "Rejected",

@@ -102,6 +102,17 @@ button.tag:focus-visible {
   font-weight: 600;
 }
 
+.tag[data-status="assignment"],
+.swatch[data-status="assignment"] {
+  --tag-bg: var(--status-assignment-bg);
+  --tag-fg: var(--status-assignment-fg);
+  --tag-border: var(--status-assignment-border);
+}
+
+.tag[data-status="assignment"] {
+  font-weight: 600;
+}
+
 .tag[data-status="interview"],
 .swatch[data-status="interview"] {
   --tag-bg: var(--status-interview-bg);
