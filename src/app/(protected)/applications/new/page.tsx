@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { citySearch, routes } from "@/app/routes";
+import { citySearch, routes, sourceSearch } from "@/app/routes";
 import { ApplicationForm } from "@/ui/applications/ApplicationForm";
 import { messages } from "@/ui/messages";
 import { ColumnWidth, PageColumn } from "@/ui/shell/PageColumn";
@@ -20,6 +20,7 @@ export default function NewApplicationPage() {
         save={createApplication}
         backHref={routes.applications}
         citySearch={citySearch}
+        sourceSearch={sourceSearch}
       />
     </PageColumn>
   );

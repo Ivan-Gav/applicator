@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { cleanSource } from "@/domain/source/rules";
 import {
   applicationStatuses,
   channels,
@@ -15,6 +16,7 @@ const blankToNull = (value: unknown) =>
 const optionalText = z.preprocess(blankToNull, z.string().trim().min(1).nullable());
 const optionalUrl = z.preprocess(blankToNull, z.url({ protocol: /^https?$/ }).nullable());
 const optionalEmail = z.preprocess(blankToNull, z.email().nullable());
+const optionalSource = z.preprocess(blankToNull, z.string().transform(cleanSource).nullable());
 
 // An instant. A day picked in a form becomes one in the browser, which alone
 // knows the user's time zone.
@@ -65,7 +67,7 @@ const editableFields = {
   country: optionalText,
   workMode: z.enum(workModes).nullable(),
   channel: z.enum(channels),
-  source: optionalText,
+  source: optionalSource,
   sourceUrl: optionalUrl,
   applicationUrl: optionalUrl,
   salary: salarySchema,

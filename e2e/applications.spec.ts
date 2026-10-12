@@ -8,6 +8,7 @@ import {
 } from "@/app/routes";
 import { ApplicationSort, defaultListQuery, SortDirection } from "@/domain/application/list";
 import { likelyNextStatuses, otherNextStatuses } from "@/domain/application/rules";
+import { knownSources } from "@/domain/source/known-sources";
 import type { ApplicationStatus } from "@/domain/application/model";
 import { formatDay } from "@/lib/date";
 import { messages } from "@/ui/messages";
@@ -66,6 +67,14 @@ test("an application created through the form is listed, edited on its page, and
     .getByRole("combobox", { name: t.form.labels.status })
     .selectOption({ label: t.status.applied });
   await page.getByLabel(t.form.labels.appliedAt).fill("2026-09-01");
+  // Picked from the known sources, listed on a click, nothing typed.
+  const source = page.getByRole("combobox", { name: t.form.labels.source });
+  await source.click();
+  await expect(
+    page.getByRole("listbox", { name: t.form.source.matches }).getByRole("option"),
+  ).toHaveText(knownSources);
+  await page.getByRole("option", { name: "LinkedIn" }).click();
+  await expect(source).toHaveValue("LinkedIn");
   await page.getByText(t.form.salary.title).click();
   await page.getByRole("textbox", { name: t.form.salary.amounts.advertised.from }).fill("60000");
   await page.getByRole("textbox", { name: t.form.salary.amounts.advertised.to }).fill("70000");
@@ -99,15 +108,23 @@ test("an application created through the form is listed, edited on its page, and
   await page.getByRole("option", { name: t.form.city.option("Munich", "München") }).click();
   await expect(city).toHaveValue("Munich");
   await expect(page.getByRole("textbox", { name: t.form.labels.country })).toHaveValue("Germany");
+  await expect(source).toHaveValue("LinkedIn");
+  // A source no suggestion knows, stored as typed.
+  await source.fill("Berliner Tech-Stammtisch");
   await page.getByRole("button", { name: t.form.saveChanges }).click();
   await expect(page.getByText(t.form.saved)).toBeVisible();
 
   await page.reload();
   await expect(city).toHaveValue("Munich");
+  await expect(source).toHaveValue("Berliner Tech-Stammtisch");
   await expect(page.getByRole("textbox", { name: t.form.labels.country })).toHaveValue("Germany");
   await expect(
     page.getByRole("textbox", { name: t.form.salary.amounts.advertised.from }),
   ).toHaveValue("60000");
+
+  // A source once used is suggested from then on.
+  await source.fill("stammtisch");
+  await expect(page.getByRole("option", { name: "Berliner Tech-Stammtisch" })).toBeVisible();
 });
 
 test("a status changed from the list is dated by the server and lands in the history", async ({

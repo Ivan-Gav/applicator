@@ -1,6 +1,9 @@
 import type { Application, ApplicationStatus, StatusEvent } from "./model";
 import type { CreateApplication, UpdateApplication } from "./schema";
 
+/** The free-text fields whose values are offered as suggestions. */
+export type DistinctValueField = "companyName" | "source";
+
 /**
  * Every method acts only on the given user's applications; another user's
  * application behaves as if it did not exist.
@@ -39,6 +42,10 @@ export interface ApplicationRepository {
   /** Every status the application has held, oldest first. */
   statusHistory(userId: string, applicationId: string): Promise<StatusEvent[]>;
 
-  // Backs autocomplete: company and source are free text, not lookup tables.
-  distinctValues(userId: string, field: "companyName" | "source"): Promise<string[]>;
+  /**
+   * Every value the field holds across the user's applications, archived ones
+   * included, each once as stored, the most used first. Backs suggestions:
+   * company and source are free text, not lookup tables.
+   */
+  distinctValues(userId: string, field: DistinctValueField): Promise<string[]>;
 }

@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import type { Application, ApplicationStatus, StatusEvent } from "@/domain/application/model";
-import type { ApplicationRepository } from "@/domain/application/repository";
+import type { ApplicationRepository, DistinctValueField } from "@/domain/application/repository";
 import type { CreateApplication, UpdateApplication } from "@/domain/application/schema";
+import { mostCommonFirst } from "@/lib/most-common-first";
 
 type Stored = { userId: string; application: Application };
 type Journalled = { userId: string; applicationId: string; event: StatusEvent };
@@ -119,8 +120,14 @@ export class InMemoryApplicationRepository implements ApplicationRepository {
     );
   }
 
-  distinctValues(): Promise<string[]> {
-    return Promise.reject(new Error("ApplicationRepository.distinctValues is not implemented yet"));
+  distinctValues(userId: string, field: DistinctValueField): Promise<string[]> {
+    return Promise.resolve(
+      mostCommonFirst(
+        this.stored
+          .filter((entry) => entry.userId === userId)
+          .map((entry) => entry.application[field]),
+      ),
+    );
   }
 
   /** Every stored application with its owner, for assertions on what was written. */

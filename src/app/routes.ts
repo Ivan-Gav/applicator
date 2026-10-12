@@ -16,6 +16,7 @@ export const routes = {
   newApplication: "/applications/new",
   apiMe: "/api/me",
   apiCities: "/api/cities",
+  apiSources: "/api/sources",
 } as const;
 
 // The search `routes.apiCities` answers.
@@ -23,6 +24,12 @@ export const citySearchParam = "q";
 
 /** The city search, as the city field asks it. */
 export const citySearch = { action: routes.apiCities, name: citySearchParam } as const;
+
+// The search `routes.apiSources` answers.
+export const sourceSearchParam = "q";
+
+/** The source search, as the source field asks it. */
+export const sourceSearch = { action: routes.apiSources, name: sourceSearchParam } as const;
 
 export const afterSignInRoute = routes.applications;
 

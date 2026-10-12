@@ -7,6 +7,7 @@ import {
   seniorities,
   workModes,
 } from "@/domain/application/model";
+import type { DistinctValueField } from "@/domain/application/repository";
 import type { CreateApplication, UpdateApplication } from "@/domain/application/schema";
 import type { Tables, TablesInsert, TablesUpdate } from "./database.types";
 
@@ -14,6 +15,12 @@ export type ApplicationRow = Tables<"application">;
 export type ApplicationInsertRow = TablesInsert<"application">;
 export type ApplicationUpdateRow = TablesUpdate<"application">;
 export type StatusEventRow = Tables<"status_event">;
+
+/** The column holding each field distinctValues() reads. */
+export const distinctValueColumns = {
+  companyName: "company_name",
+  source: "source",
+} as const satisfies Record<DistinctValueField, keyof ApplicationRow>;
 
 // The CHECK constraints keep these columns in range; a value outside it means
 // the schema and the domain have drifted apart. `column` is table-qualified

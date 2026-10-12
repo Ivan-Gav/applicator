@@ -5,7 +5,7 @@ import { cache } from "react";
 import { applicationRepositoryForRequest } from "@/adapters/supabase/application.repository";
 import { requestTimeZone } from "@/app/_utils/request-time-zone";
 import { currentUser } from "@/app/auth/_utils/current-user";
-import { applicationsPath, citySearch } from "@/app/routes";
+import { applicationsPath, citySearch, sourceSearch } from "@/app/routes";
 import { applicationIdSchema } from "@/domain/application/schema";
 import { ApplicationFacts } from "@/ui/applications/ApplicationFacts";
 import { ApplicationForm } from "@/ui/applications/ApplicationForm";
@@ -83,6 +83,7 @@ export default async function ApplicationPage({ params }: PageProps<"/applicatio
           save={updateApplication.bind(null, application.id)}
           backHref={applicationsPath()}
           citySearch={citySearch}
+          sourceSearch={sourceSearch}
         />
       </section>
     </PageColumn>

@@ -1,8 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Application, ApplicationStatus, StatusEvent } from "@/domain/application/model";
-import type { ApplicationRepository } from "@/domain/application/repository";
+import type { ApplicationRepository, DistinctValueField } from "@/domain/application/repository";
 import type { CreateApplication, UpdateApplication } from "@/domain/application/schema";
+import { mostCommonFirst } from "@/lib/most-common-first";
 import {
+  distinctValueColumns,
   statusEventToDomain,
   toDomain,
   toRow,
@@ -150,8 +152,15 @@ export class SupabaseApplicationRepository implements ApplicationRepository {
     return data.map(statusEventToDomain);
   }
 
-  distinctValues(): Promise<string[]> {
-    return Promise.reject(new Error("ApplicationRepository.distinctValues is not implemented yet"));
+  async distinctValues(userId: string, field: DistinctValueField): Promise<string[]> {
+    const { data, error } = await this.client
+      .from("application")
+      .select("company_name, source")
+      .eq("user_id", userId);
+    if (error) {
+      throw failure("distinct values", error);
+    }
+    return mostCommonFirst(data.map((row) => row[distinctValueColumns[field]]));
   }
 }
 

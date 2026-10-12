@@ -86,10 +86,17 @@ describe("InMemoryApplicationRepository", () => {
     ).resolves.toBeNull();
   });
 
-  it("refuses distinctValues loudly until it is implemented", async () => {
+  it("lists each value of the user's own applications once, archived ones included, the most used first", async () => {
     const contract: ApplicationRepository = repository;
+    await repository.create(alice, input({ source: "Xing" }));
+    await repository.create(alice, input({ source: "LinkedIn" }));
+    const archived = await repository.create(alice, input({ source: "LinkedIn" }));
+    await repository.archive(alice, archived.id, createdAt);
+    await repository.create(alice, input({ source: null }));
+    await repository.create(bob, input({ source: "Indeed" }));
 
-    await expect(contract.distinctValues(alice, "companyName")).rejects.toThrow("not implemented");
+    await expect(contract.distinctValues(alice, "source")).resolves.toEqual(["LinkedIn", "Xing"]);
+    await expect(contract.distinctValues(alice, "companyName")).resolves.toEqual(["Acme"]);
   });
 });
 

@@ -30,9 +30,11 @@ import { NativeSelect, NativeSelectOption } from "@/ui/kit/native-select";
 import { awaitingHydrationClass, useHydrated } from "@/ui/hooks/use-hydrated";
 import { Textarea } from "@/ui/kit/textarea";
 import { messages } from "@/ui/messages";
-import { CityField, type CitySearch } from "./CityField";
+import type { SuggestionSearch } from "@/ui/SuggestionField";
+import { CityField } from "./CityField";
 import { ContactFields } from "./ContactFields";
 import { SalaryFields } from "./SalaryFields";
+import { SourceField } from "./SourceField";
 import {
   type ApplicationFormField,
   isApplicationFormField,
@@ -49,7 +51,9 @@ export type ApplicationFormProps = {
   save: (input: CreateApplication) => Promise<ApplicationRejection>;
   backHref: string;
   /** Where the city field looks cities up. */
-  citySearch: CitySearch;
+  citySearch: SuggestionSearch;
+  /** Where the source field looks sources up. */
+  sourceSearch: SuggestionSearch;
   /** The application to edit; without it the form creates a new one. */
   application?: Application;
 };
@@ -67,7 +71,13 @@ const blankAsNull = (value: unknown) => (value === "" ? null : value);
 const dayAsInstant = (value: unknown) =>
   value === "" ? null : typeof value === "string" ? (startOfLocalDay(value) ?? value) : value;
 
-export function ApplicationForm({ save, backHref, citySearch, application }: ApplicationFormProps) {
+export function ApplicationForm({
+  save,
+  backHref,
+  citySearch,
+  sourceSearch,
+  application,
+}: ApplicationFormProps) {
   const editing = application !== undefined;
   const [failure, setFailure] = useState<string | null>(null);
   const [saving, startSaving] = useTransition();
@@ -324,12 +334,22 @@ export function ApplicationForm({ save, backHref, citySearch, application }: App
 
         <Field data-invalid={errors.source ? true : undefined}>
           <FieldLabel htmlFor="source">{t.labels.source}</FieldLabel>
-          <Input
-            id="source"
-            {...describedBy("source", "source-hint")}
-            {...form.register("source")}
+          <Controller
+            control={form.control}
+            name="source"
+            render={({ field }) => (
+              <SourceField
+                id="source"
+                ref={field.ref}
+                value={typeof field.value === "string" ? field.value : ""}
+                search={sourceSearch}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                {...describedBy("source", "source-hint")}
+              />
+            )}
           />
-          <FieldDescription id="source-hint">{t.sourceHint}</FieldDescription>
+          <FieldDescription id="source-hint">{t.source.hint}</FieldDescription>
           {error("source")}
         </Field>
       </div>

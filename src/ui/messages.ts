@@ -207,7 +207,12 @@ export const messages = {
       } satisfies Record<ApplicationFormField, string>,
       workModeUnset: "Not specified",
       seniorityUnset: "Not specified",
-      sourceHint: "Where you found the job, such as LinkedIn or a company website.",
+      source: {
+        hint: "Where you found the job. Pick one from the list or type any name.",
+        matches: "Suggested sources",
+        // How many sources are suggested, read out as they arrive.
+        found: (count: number) => (count === 1 ? "1 source found" : `${count} sources found`),
+      },
       city: {
         hint: "Type any place; picking a suggestion also fills in its country.",
         matches: "Suggested cities",

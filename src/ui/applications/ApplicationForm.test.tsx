@@ -21,6 +21,7 @@ import { applicationFormFields, createOnlyFormFields } from "./application-form-
 
 const t = messages.applications.form;
 const citySearch = { action: "/api/cities", name: "q" };
+const sourceSearch = { action: "/api/sources", name: "q" };
 const hamburg: CityMatch = {
   id: 2911298,
   name: "Hamburg",
@@ -30,7 +31,10 @@ const hamburg: CityMatch = {
   matchedName: null,
 };
 
-const server = setupServer(http.get(`*${citySearch.action}`, () => HttpResponse.json([hamburg])));
+const server = setupServer(
+  http.get(`*${citySearch.action}`, () => HttpResponse.json([hamburg])),
+  http.get(`*${sourceSearch.action}`, () => HttpResponse.json(["LinkedIn"])),
+);
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
 
@@ -54,6 +58,7 @@ function renderForm(
         save={createApplication}
         backHref="/list"
         citySearch={citySearch}
+        sourceSearch={sourceSearch}
         application={application}
       />
       <Toaster />
@@ -162,6 +167,32 @@ describe("ApplicationForm", () => {
     });
   });
 
+  it("sends a source outside the suggestions as typed, its spaces cleaned", async () => {
+    const { createApplication, user } = renderForm();
+
+    await fillRequired(user);
+    await user.type(
+      screen.getByRole("combobox", { name: t.labels.source }),
+      " Berlin  Tech Meetup ",
+    );
+    await user.click(submitButton());
+
+    await vi.waitFor(() => expect(createApplication).toHaveBeenCalledOnce());
+    expect(createApplication.mock.calls[0]?.[0]).toMatchObject({ source: "Berlin Tech Meetup" });
+  });
+
+  it("sends the source picked from the suggestions", async () => {
+    const { createApplication, user } = renderForm();
+
+    await fillRequired(user);
+    await user.type(screen.getByRole("combobox", { name: t.labels.source }), "linked in");
+    await user.click(await screen.findByRole("option", { name: "LinkedIn" }));
+    await user.click(submitButton());
+
+    await vi.waitFor(() => expect(createApplication).toHaveBeenCalledOnce());
+    expect(createApplication.mock.calls[0]?.[0]).toMatchObject({ source: "LinkedIn" });
+  });
+
   it("sends no work mode when none is chosen", async () => {
     const { createApplication, user } = renderForm();
 
@@ -228,7 +259,12 @@ describe("ApplicationForm before hydration", () => {
   it("renders saving disabled, as a submit then would reach the browser's default", () => {
     const container = document.createElement("div");
     container.innerHTML = renderToString(
-      <ApplicationForm save={vi.fn()} backHref="/list" citySearch={citySearch} />,
+      <ApplicationForm
+        save={vi.fn()}
+        backHref="/list"
+        citySearch={citySearch}
+        sourceSearch={sourceSearch}
+      />,
     );
 
     expect(within(container).getByRole("button", { name: t.submit })).toBeDisabled();
@@ -452,6 +488,7 @@ describe("ApplicationForm editing an application", () => {
     expect(screen.getByRole("combobox", { name: t.labels.seniority })).toHaveValue("senior");
     expect(screen.getByRole("combobox", { name: t.labels.city })).toHaveValue("Berlin");
     expect(screen.getByRole("combobox", { name: t.labels.channel })).toHaveValue("agency");
+    expect(screen.getByRole("combobox", { name: t.labels.source })).toHaveValue("LinkedIn");
     expect(textbox(t.labels.notes)).toHaveValue("Second round booked");
     expect(textbox(t.salary.amounts.advertised.from)).toBeVisible();
     expect(textbox(t.salary.amounts.advertised.from)).toHaveValue("60000");

@@ -183,10 +183,11 @@ describe("createApplicationSchema", () => {
     expect(result.notes).toBeNull();
   });
 
-  it("trims the source so autocomplete sees one spelling per value", () => {
-    expect(createApplicationSchema.parse({ ...required, source: " LinkedIn " }).source).toBe(
-      "LinkedIn",
-    );
+  it("cleans the spaces of the source and keeps its case and spelling", () => {
+    expect(
+      createApplicationSchema.parse({ ...required, source: "  welcome  to the\tJungle " }).source,
+    ).toBe("welcome to the Jungle");
+    expect(updateApplicationSchema.parse({ source: " Linked   In " }).source).toBe("Linked In");
   });
 
   it.each(["junior", "mid", "senior", "lead"] as const)("accepts seniority %s", (seniority) => {
