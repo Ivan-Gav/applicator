@@ -7,7 +7,7 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!.husky/_/**"]
+    "includes": ["**", "!.husky/_/**", "!src/adapters/geonames/cities.json"]
   },
   "formatter": {
     "enabled": true,

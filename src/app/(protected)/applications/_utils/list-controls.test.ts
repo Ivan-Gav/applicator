@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { pageSearchParams } from "@/test/search-params";
 import {
   ApplicationsView,
   applicationsListStateOf,
@@ -27,15 +28,17 @@ function aView(overrides: Partial<ApplicationListView> = {}): ApplicationListVie
       { status: "rejected", count: 2 },
     ],
     waitingLongCount: 0,
+    cityCounts: [
+      { city: "Berlin", count: 1 },
+      { city: "Munich", count: 3 },
+    ],
     ...overrides,
   };
 }
 
 // What the list would ask for after following `href`.
 function stateAt(href: string) {
-  return applicationsListStateOf(
-    Object.fromEntries(new URL(href, "http://localhost").searchParams),
-  );
+  return applicationsListStateOf(pageSearchParams(new URL(href, "http://localhost").searchParams));
 }
 
 function controlsFor(query: ApplicationListQuery, list = aView()) {
@@ -89,9 +92,35 @@ describe("applicationListControls", () => {
     );
   });
 
+  it("offers the cities of the view, each switching only itself, however spelled in the URL", () => {
+    const query = { ...defaultListQuery, cities: ["munich"] };
+
+    const [berlin, munich] = controlsFor(query).filters.cities ?? [];
+
+    expect(berlin).toMatchObject({ city: "Berlin", count: 1, on: false });
+    expect(munich).toMatchObject({ city: "Munich", count: 3, on: true });
+    expect(stateAt(berlin!.href).query.cities).toEqual(["munich", "Berlin"]);
+    expect(stateAt(munich!.href).query.cities).toEqual([]);
+  });
+
+  it("keeps a city filtered on even when the view no longer holds it", () => {
+    const cities = controlsFor({ ...defaultListQuery, cities: ["Vienna"] }).filters.cities;
+
+    expect(cities?.map(({ city, count, on }) => [city, count, on])).toEqual([
+      ["Berlin", 1, false],
+      ["Munich", 3, false],
+      ["Vienna", 0, true],
+    ]);
+  });
+
+  it("offers no city filter while no application of the view has a city", () => {
+    expect(controlsFor(defaultListQuery, aView({ cityCounts: [] })).filters.cities).toBeNull();
+  });
+
   it("clears search and filters but keeps the order", () => {
     const query = {
       search: "acme",
+      cities: ["Munich"],
       statuses: ["applied"] as const,
       waitingLong: true,
       sort: ApplicationSort.Company,

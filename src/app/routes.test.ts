@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { pageSearchParams } from "@/test/search-params";
 import {
   ApplicationSort,
   defaultListQuery,
@@ -132,8 +133,7 @@ describe("applicationsViewOf", () => {
 
 describe("applicationsListStateOf", () => {
   function stateOf(path: string) {
-    const params = Object.fromEntries(parse(path).searchParams);
-    return applicationsListStateOf(params);
+    return applicationsListStateOf(pageSearchParams(parse(path).searchParams));
   }
 
   it("reads a bare list as the active view, unfiltered, newest first, one page long", () => {
@@ -149,6 +149,7 @@ describe("applicationsListStateOf", () => {
       view: ApplicationsView.Archived,
       query: {
         search: "platform engineer",
+        cities: ["Frankfurt am Main", "Washington, D.C."],
         statuses: ["applied", "interview"] as const,
         waitingLong: true,
         sort: ApplicationSort.Company,
@@ -201,6 +202,10 @@ describe("applicationsListStateOf", () => {
       query: { ...defaultListQuery, statuses: ["applied", "offer"] },
       shown: applicationsPageSize,
     });
+  });
+
+  it("ignores a blank city", () => {
+    expect(stateOf(`${routes.applications}?city=%20`).query.cities).toEqual([]);
   });
 
   it.each(["0", "-50", "10", "1e3", "2.5"])("shows one page for shown=%s", (shown) => {

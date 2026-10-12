@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { geonamesCityIndex } from "@/adapters/geonames/cities";
 import { applicationRepositoryForRequest } from "@/adapters/supabase/application.repository";
 import { requestTimeZone } from "@/app/_utils/request-time-zone";
 import { currentUser } from "@/app/auth/_utils/current-user";
@@ -11,6 +12,7 @@ import {
   routes,
 } from "@/app/routes";
 import { applicationListView } from "@/domain/application/list";
+import { cityIndex } from "@/domain/city/search";
 import { ApplicationList } from "@/ui/applications/ApplicationList";
 import { messages } from "@/ui/messages";
 import { ColumnWidth, PageColumn } from "@/ui/shell/PageColumn";
@@ -49,8 +51,10 @@ export default async function ApplicationsPage({ searchParams }: PageProps<"/app
     requestTimeZone(),
   ]);
   const now = new Date();
+  // Only a search reads the city list, and its first build in a process takes ~100 ms.
+  const cities = query.search.trim() === "" ? cityIndex([]) : geonamesCityIndex();
   // The whole view is filtered here; only the rows to show reach the browser.
-  const list = applicationListView(applications, query, now, shown);
+  const list = applicationListView(applications, query, now, shown, cities);
 
   return (
     <PageColumn width={ColumnWidth.Wide}>

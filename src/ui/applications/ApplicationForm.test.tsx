@@ -1,8 +1,10 @@
 import { render, screen, within } from "@testing-library/react";
+import { HttpResponse, http } from "msw";
+import { setupServer } from "msw/node";
 import { renderToString } from "react-dom/server";
 import userEvent from "@testing-library/user-event";
 import { toast } from "sonner";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import {
   type Application,
   contactParts,
@@ -10,6 +12,7 @@ import {
   salaryAmounts,
 } from "@/domain/application/model";
 import type { ApplicationRejection, CreateApplication } from "@/domain/application/schema";
+import type { CityMatch } from "@/domain/city/model";
 import { anApplication } from "@/test/application.fixture";
 import { Toaster } from "@/ui/kit/sonner";
 import { messages } from "@/ui/messages";
@@ -17,11 +20,27 @@ import { ApplicationForm } from "./ApplicationForm";
 import { applicationFormFields, createOnlyFormFields } from "./application-form-fields";
 
 const t = messages.applications.form;
+const citySearch = { action: "/api/cities", name: "q" };
+const hamburg: CityMatch = {
+  id: 2911298,
+  name: "Hamburg",
+  country: "Germany",
+  region: "Hamburg",
+  district: null,
+  matchedName: null,
+};
+
+const server = setupServer(http.get(`*${citySearch.action}`, () => HttpResponse.json([hamburg])));
+
+beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
 
 // Sonner keeps its toasts in module state, which outlives each test's render.
 afterEach(() => {
   toast.dismiss();
+  server.resetHandlers();
 });
+
+afterAll(() => server.close());
 
 function renderForm(
   outcome: () => Promise<ApplicationRejection> = () => Promise.resolve({ invalidFields: [] }),
@@ -31,7 +50,12 @@ function renderForm(
     vi.fn<(input: CreateApplication) => Promise<ApplicationRejection>>(outcome);
   render(
     <>
-      <ApplicationForm save={createApplication} backHref="/list" application={application} />
+      <ApplicationForm
+        save={createApplication}
+        backHref="/list"
+        citySearch={citySearch}
+        application={application}
+      />
       <Toaster />
     </>,
   );
@@ -203,7 +227,9 @@ describe("ApplicationForm", () => {
 describe("ApplicationForm before hydration", () => {
   it("renders saving disabled, as a submit then would reach the browser's default", () => {
     const container = document.createElement("div");
-    container.innerHTML = renderToString(<ApplicationForm save={vi.fn()} backHref="/list" />);
+    container.innerHTML = renderToString(
+      <ApplicationForm save={vi.fn()} backHref="/list" citySearch={citySearch} />,
+    );
 
     expect(within(container).getByRole("button", { name: t.submit })).toBeDisabled();
   });
@@ -424,7 +450,7 @@ describe("ApplicationForm editing an application", () => {
     expect(textbox(t.labels.companyName)).toHaveValue("Globex");
     expect(textbox(t.labels.positionTitle)).toHaveValue("Platform Engineer");
     expect(screen.getByRole("combobox", { name: t.labels.seniority })).toHaveValue("senior");
-    expect(textbox(t.labels.city)).toHaveValue("Berlin");
+    expect(screen.getByRole("combobox", { name: t.labels.city })).toHaveValue("Berlin");
     expect(screen.getByRole("combobox", { name: t.labels.channel })).toHaveValue("agency");
     expect(textbox(t.labels.notes)).toHaveValue("Second round booked");
     expect(textbox(t.salary.amounts.advertised.from)).toBeVisible();
@@ -492,8 +518,10 @@ describe("ApplicationForm editing an application", () => {
   it("sends the whole record and says when it is saved", async () => {
     const { createApplication: save, user } = renderEdit();
 
-    await user.clear(textbox(t.labels.city));
-    await user.type(textbox(t.labels.city), "Hamburg");
+    const city = screen.getByRole("combobox", { name: t.labels.city });
+    await user.clear(city);
+    await user.type(city, "Hamb");
+    await user.click(await screen.findByRole("option", { name: /^Hamburg/ }));
     await user.click(saveChangesButton());
 
     expect(await screen.findByText(t.saved)).toBeVisible();
@@ -501,6 +529,7 @@ describe("ApplicationForm editing an application", () => {
     expect(save.mock.calls[0]?.[0]).toMatchObject({
       companyName: "Globex",
       city: "Hamburg",
+      country: "Germany",
       channel: "agency",
       salary: { advertised: { min: 60_000, max: 70_000 }, period: "year" },
       contact: { name: "Jane Doe", email: null },
@@ -523,10 +552,10 @@ describe("ApplicationForm editing an application", () => {
 
     expect(saveChangesButton()).toBeDisabled();
 
-    await user.type(textbox(t.labels.city), "x");
+    await user.type(textbox(t.labels.notes), "x");
     expect(saveChangesButton()).toBeEnabled();
 
-    await user.type(textbox(t.labels.city), "{Backspace}");
+    await user.type(textbox(t.labels.notes), "{Backspace}");
     expect(saveChangesButton()).toBeDisabled();
   });
 
@@ -544,11 +573,11 @@ describe("ApplicationForm editing an application", () => {
   it("has nothing left to save once the changes are saved", async () => {
     const { user } = renderEdit();
 
-    await user.type(textbox(t.labels.city), "x");
+    await user.type(textbox(t.labels.notes), "x");
     await user.click(saveChangesButton());
 
     expect(await screen.findByText(t.saved)).toBeVisible();
     expect(await screen.findByRole("button", { name: t.saveChanges })).toBeDisabled();
-    expect(textbox(t.labels.city)).toHaveValue("Berlinx");
+    expect(textbox(t.labels.notes)).toHaveValue("Second round bookedx");
   });
 });

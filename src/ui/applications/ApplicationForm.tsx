@@ -5,7 +5,7 @@ import Link from "next/link";
 import { unstable_rethrow } from "next/navigation";
 import { useState, useTransition } from "react";
 import { flushSync } from "react-dom";
-import { useForm, useWatch } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import {
   type Application,
@@ -30,6 +30,7 @@ import { NativeSelect, NativeSelectOption } from "@/ui/kit/native-select";
 import { awaitingHydrationClass, useHydrated } from "@/ui/hooks/use-hydrated";
 import { Textarea } from "@/ui/kit/textarea";
 import { messages } from "@/ui/messages";
+import { CityField, type CitySearch } from "./CityField";
 import { ContactFields } from "./ContactFields";
 import { SalaryFields } from "./SalaryFields";
 import {
@@ -47,6 +48,8 @@ export type ApplicationFormProps = {
    */
   save: (input: CreateApplication) => Promise<ApplicationRejection>;
   backHref: string;
+  /** Where the city field looks cities up. */
+  citySearch: CitySearch;
   /** The application to edit; without it the form creates a new one. */
   application?: Application;
 };
@@ -64,7 +67,7 @@ const blankAsNull = (value: unknown) => (value === "" ? null : value);
 const dayAsInstant = (value: unknown) =>
   value === "" ? null : typeof value === "string" ? (startOfLocalDay(value) ?? value) : value;
 
-export function ApplicationForm({ save, backHref, application }: ApplicationFormProps) {
+export function ApplicationForm({ save, backHref, citySearch, application }: ApplicationFormProps) {
   const editing = application !== undefined;
   const [failure, setFailure] = useState<string | null>(null);
   const [saving, startSaving] = useTransition();
@@ -245,12 +248,29 @@ export function ApplicationForm({ save, backHref, application }: ApplicationForm
       <div className="grid gap-3.5 sm:grid-cols-3">
         <Field data-invalid={errors.city ? true : undefined}>
           <FieldLabel htmlFor="city">{t.labels.city}</FieldLabel>
-          <Input
-            id="city"
-            autoComplete="address-level2"
-            {...describedBy("city")}
-            {...form.register("city")}
+          <Controller
+            control={form.control}
+            name="city"
+            render={({ field }) => (
+              <CityField
+                id="city"
+                ref={field.ref}
+                value={typeof field.value === "string" ? field.value : ""}
+                search={citySearch}
+                onChange={field.onChange}
+                onPick={(city, country) => {
+                  field.onChange(city);
+                  form.setValue("country", country, {
+                    shouldDirty: true,
+                    shouldValidate: form.formState.isSubmitted,
+                  });
+                }}
+                onBlur={field.onBlur}
+                {...describedBy("city", "city-hint")}
+              />
+            )}
           />
+          <FieldDescription id="city-hint">{t.city.hint}</FieldDescription>
           {error("city")}
         </Field>
 

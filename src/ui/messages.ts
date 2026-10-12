@@ -38,6 +38,10 @@ export const messages = {
   footer: {
     sourceCode: "Source code on GitHub",
     copyright: "© 2026 Ivan Gavrilin",
+    // GeoNames requires attribution under CC BY 4.0.
+    placeData: "Place names from",
+    placeDataSource: "GeoNames",
+    placeDataLicence: "CC BY 4.0",
   },
 
   error: {
@@ -98,6 +102,9 @@ export const messages = {
     filters: {
       label: "Filter",
       waitingLong: (days: number) => `Waiting ${days}+ days`,
+      // The city menu's button: "City", "City: Munich", "City: 3".
+      cities: (chosen: readonly string[]) =>
+        chosen.length === 0 ? "City" : `City: ${chosen.length === 1 ? chosen[0] : chosen.length}`,
       clear: "Clear filters",
     },
     sortIndicator: {
@@ -201,6 +208,17 @@ export const messages = {
       workModeUnset: "Not specified",
       seniorityUnset: "Not specified",
       sourceHint: "Where you found the job, such as LinkedIn or a company website.",
+      city: {
+        hint: "Type any place; picking a suggestion also fills in its country.",
+        matches: "Suggested cities",
+        // How many cities are suggested, read out as they arrive.
+        found: (count: number) => (count === 1 ? "1 city found" : `${count} cities found`),
+        // A city found by another of its names: "Munich (München)".
+        option: (name: string, matchedName: string | null) =>
+          matchedName ? `${name} (${matchedName})` : name,
+        // What tells same-named cities apart: "Bavaria, Germany".
+        place: (parts: readonly string[]) => parts.join(", "),
+      },
       errors: {
         companyName: "Enter the company name, up to 200 characters.",
         positionTitle: "Enter the position title, up to 200 characters.",

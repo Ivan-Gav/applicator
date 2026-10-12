@@ -110,6 +110,17 @@ describe("createApplication", () => {
     await expect(repository.listActive(intruder)).resolves.toEqual([]);
   });
 
+  it("stores city and country exactly as given, whatever the reference list knows", async () => {
+    await expect(
+      createApplication({ ...valid, city: "münchen", country: "Deutschland" }),
+    ).rejects.toBeInstanceOf(Redirected);
+
+    expect(repository.all()[0]?.application).toMatchObject({
+      city: "münchen",
+      country: "Deutschland",
+    });
+  });
+
   it("stores nothing without a session", async () => {
     signedOut();
 

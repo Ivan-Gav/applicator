@@ -43,7 +43,7 @@ const sorting = Object.fromEntries(
 
 const controls: ApplicationListControls = {
   search: { action: "/list", name: "q", value: "", hiddenFields: [] },
-  filters: { statuses: [], waitingLong: null, clearHref: null },
+  filters: { statuses: [], waitingLong: null, cities: null, clearHref: null },
   total: 28,
   matching: 15,
   filtered: true,

@@ -144,6 +144,28 @@ tables. Recurrence is real but rare; autocomplete over distinct existing values
 (`ApplicationRepository.distinctValues`) covers it without lookup UI, duplicate
 merging or joins on every read. Do not reintroduce lookup tables for them.
 
+### Cities
+
+**The database is the only source of truth.** `city` and `country` are plain
+text, stored exactly as sent. Nothing rewrites them to match a reference list.
+
+A GeoNames extract (`src/adapters/geonames/cities.json`, written by hand with
+`npm run data:cities`, never in the build) only helps:
+
+- **Suggestions while typing.** The city field searches `/api/cities`; the
+  browser never receives the extract. Picking a suggestion fills in city and
+  country; any text is accepted either way.
+- **Wider list search.** `alternateNameMatches` lets "мюнхен" find a city
+  stored as "Munich", only when the stored city is the list's canonical name in
+  a country the list knows, and only one city there has that name. It reads,
+  never writes.
+
+The list's city filter offers the cities stored in the user's own applications,
+spellings differing only in case or accents counted as one. Different names for
+one place ("Munich", "München") stay apart. Do not reintroduce resolving a
+stored city against the list: that made two sources of truth. GeoNames is
+CC BY 4.0, credited in the footer.
+
 ### Status history
 
 `application.status` holds the current status. A trigger on `application`

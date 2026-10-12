@@ -1,3 +1,5 @@
+import { alternateNameMatches, type CityIndex } from "@/domain/city/search";
+import { normalizeForSearch } from "@/lib/normalize-for-search";
 import { type Application, type ApplicationStatus, applicationStatuses } from "./model";
 import { daysWithoutResponse } from "./rules";
 
@@ -22,8 +24,10 @@ export const longWaitDays = 40;
 
 /** Which applications of a view to show, and in what order. */
 export type ApplicationListQuery = {
-  /** Matched against company, position and city; blank matches everything. */
+  /** Matched against company, position and city (see {@link matchesSearch}); blank matches everything. */
   search: string;
+  /** Any of these, ignoring case and accents; none means every city. */
+  cities: readonly string[];
   /** Any of these; none means every status. */
   statuses: readonly ApplicationStatus[];
   /** Only those waiting {@link longWaitDays} days or more. */
@@ -34,6 +38,7 @@ export type ApplicationListQuery = {
 
 export const defaultListQuery: ApplicationListQuery = {
   search: "",
+  cities: [],
   statuses: [],
   waitingLong: false,
   sort: ApplicationSort.AppliedAt,
@@ -49,7 +54,12 @@ export function firstDirection(sort: ApplicationSort): SortDirection {
 
 /** Whether the query narrows the view at all; the order does not count. */
 export function isFiltered(query: ApplicationListQuery): boolean {
-  return normalizedSearch(query.search) !== "" || query.statuses.length > 0 || query.waitingLong;
+  return (
+    normalizedSearch(query.search) !== "" ||
+    query.cities.length > 0 ||
+    query.statuses.length > 0 ||
+    query.waitingLong
+  );
 }
 
 export function waitsLong(application: Application, now: Date): boolean {
@@ -57,27 +67,52 @@ export function waitsLong(application: Application, now: Date): boolean {
   return days !== null && days >= longWaitDays;
 }
 
-/** Case-insensitive, in company, position or city. */
-export function matchesSearch(application: Application, search: string): boolean {
-  const needle = normalizedSearch(search);
-  if (needle === "") {
+/**
+ * In company or position, ignoring case; in the city, ignoring case and
+ * accents; or in another name the reference list knows the city by, from the
+ * start of a word.
+ */
+export function matchesSearch(
+  application: Application,
+  search: string,
+  cities: CityIndex,
+): boolean {
+  const lowercaseSearch = normalizedSearch(search);
+  if (lowercaseSearch === "") {
     return true;
   }
-  return [application.companyName, application.positionTitle, application.city].some(
-    (field) => field !== null && field.toLocaleLowerCase().includes(needle),
+  if (
+    [application.companyName, application.positionTitle].some((field) =>
+      field.toLocaleLowerCase().includes(lowercaseSearch),
+    )
+  ) {
+    return true;
+  }
+  const { city, country } = application;
+  if (city === null) {
+    return false;
+  }
+  const citySearch = normalizeForSearch(search);
+  return (
+    (citySearch !== "" && normalizeForSearch(city).includes(citySearch)) ||
+    alternateNameMatches(cities, city, country, search)
   );
 }
 
-export function matchesQuery(
-  application: Application,
+/** Whether an application passes every filter of `query`; prepared once for a whole view. */
+export function applicationFilter(
   query: ApplicationListQuery,
   now: Date,
-): boolean {
-  return (
-    matchesSearch(application, query.search) &&
+  cities: CityIndex,
+): (application: Application) => boolean {
+  // Spellings differing only in case or accents name one city.
+  const chosenCities = new Set(query.cities.map(normalizeForSearch));
+  return (application) =>
+    matchesSearch(application, query.search, cities) &&
+    (chosenCities.size === 0 ||
+      (application.city !== null && chosenCities.has(normalizeForSearch(application.city)))) &&
     (query.statuses.length === 0 || query.statuses.includes(application.status)) &&
-    (!query.waitingLong || waitsLong(application, now))
-  );
+    (!query.waitingLong || waitsLong(application, now));
 }
 
 /**
@@ -108,6 +143,12 @@ export type StatusCount = {
   count: number;
 };
 
+/** One city of a view, spelled as first stored, with how many applications are there. */
+export type CityCount = {
+  city: string;
+  count: number;
+};
+
 /** What a page of the list needs to know about one view. */
 export type ApplicationListView = {
   /** The first `limit` matching applications, in the query's order. */
@@ -120,6 +161,8 @@ export type ApplicationListView = {
   statusCounts: StatusCount[];
   /** How many of the whole view wait long; their filter is offered only when some do. */
   waitingLongCount: number;
+  /** Alphabetically, every city of the whole view; spellings differing in case or accents count as one. */
+  cityCounts: CityCount[];
 };
 
 export function applicationListView(
@@ -127,9 +170,10 @@ export function applicationListView(
   query: ApplicationListQuery,
   now: Date,
   limit: number,
+  cities: CityIndex,
 ): ApplicationListView {
   const matching = sortApplications(
-    applications.filter((application) => matchesQuery(application, query, now)),
+    applications.filter(applicationFilter(query, now, cities)),
     query.sort,
     query.direction,
     now,
@@ -145,7 +189,20 @@ export function applicationListView(
       }))
       .filter(({ count }) => count > 0),
     waitingLongCount: applications.filter((application) => waitsLong(application, now)).length,
+    cityCounts: cityCounts(applications),
   };
+}
+
+function cityCounts(applications: readonly Application[]): CityCount[] {
+  const counts = new Map<string, CityCount>();
+  for (const { city } of applications) {
+    if (city !== null) {
+      const key = normalizeForSearch(city);
+      const counted = counts.get(key) ?? { city, count: 0 };
+      counts.set(key, { ...counted, count: counted.count + 1 });
+    }
+  }
+  return [...counts.values()].sort((a, b) => compare(a.city, b.city));
 }
 
 function normalizedSearch(search: string): string {

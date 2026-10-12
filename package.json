@@ -23,6 +23,7 @@
     "db:migrate": "supabase migration up --local",
     "db:types": "supabase gen types --local --lang typescript --schema public > src/adapters/supabase/database.types.ts && biome format --write src/adapters/supabase/database.types.ts",
     "db:test": "supabase test db --local",
+    "data:cities": "node scripts/extract-cities.mts",
     "prepare": "husky"
   },
   "dependencies": {

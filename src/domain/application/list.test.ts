@@ -1,13 +1,14 @@
 import { describe, expect, it } from "vitest";
+import { cityIndex } from "@/domain/city/search";
 import { anApplication } from "@/test/application.fixture";
 import {
   ApplicationSort,
+  applicationFilter,
   applicationListView,
   defaultListQuery,
   firstDirection,
   isFiltered,
   longWaitDays,
-  matchesQuery,
   matchesSearch,
   SortDirection,
   sortApplications,
@@ -17,6 +18,19 @@ import type { Application } from "./model";
 
 const now = new Date("2026-10-06T12:00:00.000Z");
 const daysAgo = (days: number) => new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+
+const cities = cityIndex([
+  {
+    id: 1,
+    name: "Munich",
+    countryCode: "DE",
+    country: "Germany",
+    region: "Bavaria",
+    district: null,
+    population: 1_260_000,
+    alternateNames: ["München", "Мюнхен"],
+  },
+]);
 
 function companies(applications: readonly Application[]) {
   return applications.map((application) => application.companyName);
@@ -32,16 +46,30 @@ describe("matchesSearch", () => {
   it.each(["globex", "PLATFORM", "engineer", "berl", "  Globex  "])(
     "finds %j in company, position or city, ignoring case and outer spaces",
     (search) => {
-      expect(matchesSearch(application, search)).toBe(true);
+      expect(matchesSearch(application, search, cities)).toBe(true);
     },
   );
 
   it("finds nothing that is not there", () => {
-    expect(matchesSearch(application, "Munich")).toBe(false);
+    expect(matchesSearch(application, "Munich", cities)).toBe(false);
+  });
+
+  it("finds the city as stored, ignoring accents", () => {
+    expect(matchesSearch(anApplication({ city: "Zürich" }), "zurich", cities)).toBe(true);
+  });
+
+  it("finds a city by another name the reference list knows it by, in a country it knows", () => {
+    const inMunich = anApplication({ city: "Munich", country: "Germany" });
+
+    expect(matchesSearch(inMunich, "münchen", cities)).toBe(true);
+    expect(matchesSearch(inMunich, "мюнхен", cities)).toBe(true);
+    expect(matchesSearch(anApplication({ city: "Munich", country: null }), "мюнхен", cities)).toBe(
+      false,
+    );
   });
 
   it("lets everything through a blank search", () => {
-    expect(matchesSearch(anApplication({ city: null }), "   ")).toBe(true);
+    expect(matchesSearch(anApplication({ city: null }), "   ", cities)).toBe(true);
   });
 });
 
@@ -58,13 +86,14 @@ describe("waitsLong", () => {
   });
 });
 
-describe("matchesQuery", () => {
+describe("applicationFilter", () => {
   it("lets any of the chosen statuses through, and only those", () => {
     const query = { ...defaultListQuery, statuses: ["applied", "offer"] as const };
+    const passes = applicationFilter(query, now, cities);
 
-    expect(matchesQuery(anApplication({ status: "offer" }), query, now)).toBe(true);
-    expect(matchesQuery(anApplication({ status: "applied" }), query, now)).toBe(true);
-    expect(matchesQuery(anApplication({ status: "interview" }), query, now)).toBe(false);
+    expect(passes(anApplication({ status: "offer" }))).toBe(true);
+    expect(passes(anApplication({ status: "applied" }))).toBe(true);
+    expect(passes(anApplication({ status: "interview" }))).toBe(false);
   });
 
   it("asks every filter at once", () => {
@@ -74,12 +103,21 @@ describe("matchesQuery", () => {
       statuses: ["applied"] as const,
       waitingLong: true,
     };
+    const passes = applicationFilter(query, now, cities);
 
-    expect(matchesQuery(anApplication({ appliedAt: daysAgo(50) }), query, now)).toBe(true);
-    expect(matchesQuery(anApplication({ appliedAt: daysAgo(5) }), query, now)).toBe(false);
-    expect(
-      matchesQuery(anApplication({ companyName: "Globex", appliedAt: daysAgo(50) }), query, now),
-    ).toBe(false);
+    expect(passes(anApplication({ appliedAt: daysAgo(50) }))).toBe(true);
+    expect(passes(anApplication({ appliedAt: daysAgo(5) }))).toBe(false);
+    expect(passes(anApplication({ companyName: "Globex", appliedAt: daysAgo(50) }))).toBe(false);
+  });
+
+  it("lets through any of the chosen cities, ignoring case and accents, and only those", () => {
+    const query = { ...defaultListQuery, cities: ["munchen", "Berlin"] };
+    const passes = applicationFilter(query, now, cities);
+
+    expect(passes(anApplication({ city: "München" }))).toBe(true);
+    expect(passes(anApplication({ city: "berlin" }))).toBe(true);
+    expect(passes(anApplication({ city: "Munich" }))).toBe(false);
+    expect(passes(anApplication({ city: null }))).toBe(false);
   });
 });
 
@@ -96,12 +134,14 @@ describe("isFiltered", () => {
     expect(isFiltered({ ...defaultListQuery, search: "  " })).toBe(false);
   });
 
-  it.each([{ search: "acme" }, { statuses: ["draft"] as const }, { waitingLong: true }])(
-    "is true for %j",
-    (narrowing) => {
-      expect(isFiltered({ ...defaultListQuery, ...narrowing })).toBe(true);
-    },
-  );
+  it.each([
+    { search: "acme" },
+    { cities: ["Munich"] },
+    { statuses: ["draft"] as const },
+    { waitingLong: true },
+  ])("is true for %j", (narrowing) => {
+    expect(isFiltered({ ...defaultListQuery, ...narrowing })).toBe(true);
+  });
 });
 
 describe("firstDirection", () => {
@@ -236,6 +276,7 @@ describe("applicationListView", () => {
       { ...defaultListQuery, statuses: ["applied", "interview"] },
       now,
       2,
+      cities,
     );
 
     expect(companies(view.shown)).toEqual(["Globex", "Hooli"]);
@@ -249,6 +290,7 @@ describe("applicationListView", () => {
       { ...defaultListQuery, search: "acme" },
       now,
       50,
+      cities,
     );
 
     expect(view.statusCounts).toEqual([
@@ -257,5 +299,29 @@ describe("applicationListView", () => {
       { status: "rejected", count: 1 },
     ]);
     expect(view.waitingLongCount).toBe(1);
+  });
+
+  it("counts every city of the view alphabetically, spellings differing in case or accents as one", () => {
+    const view = applicationListView(
+      [
+        anApplication({ city: "München" }),
+        anApplication({ city: "Munchen" }),
+        anApplication({ city: "Munich", country: "Germany" }),
+        anApplication({ city: "Berlin" }),
+        anApplication({ city: "berlin" }),
+        anApplication({ city: null }),
+      ],
+      { ...defaultListQuery, cities: ["Berlin"] },
+      now,
+      50,
+      cities,
+    );
+
+    expect(view.cityCounts).toEqual([
+      { city: "Berlin", count: 2 },
+      { city: "München", count: 2 },
+      { city: "Munich", count: 1 },
+    ]);
+    expect(view.matching).toBe(2);
   });
 });

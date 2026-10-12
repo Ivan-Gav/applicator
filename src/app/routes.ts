@@ -15,7 +15,14 @@ export const routes = {
   applications: "/applications",
   newApplication: "/applications/new",
   apiMe: "/api/me",
+  apiCities: "/api/cities",
 } as const;
+
+// The search `routes.apiCities` answers.
+export const citySearchParam = "q";
+
+/** The city search, as the city field asks it. */
+export const citySearch = { action: routes.apiCities, name: citySearchParam } as const;
 
 export const afterSignInRoute = routes.applications;
 
@@ -27,6 +34,8 @@ export function applicationPath(id: string): string {
 export const applicationsSearchParam = {
   view: "view",
   search: "q",
+  // Repeated, once per city: a city's name may hold a comma.
+  city: "city",
   // Comma-separated, e.g. "applied,interview".
   status: "status",
   waiting: "waiting",
@@ -63,6 +72,9 @@ export function applicationsPath(
   if (query.search.trim() !== "") {
     params.set(p.search, query.search);
   }
+  for (const city of query.cities) {
+    params.append(p.city, city);
+  }
   if (query.statuses.length > 0) {
     params.set(p.status, query.statuses.join(","));
   }
@@ -96,6 +108,10 @@ export function applicationsListStateOf(params: SearchParams): ApplicationsListS
     const raw = params[name];
     return Array.isArray(raw) ? raw[0] : raw;
   };
+  const values = (name: string) => {
+    const raw = params[name];
+    return Array.isArray(raw) ? raw : raw === undefined ? [] : [raw];
+  };
   const requested = new Set(value(p.status)?.split(","));
   const sort = oneOf(Object.values(ApplicationSort), value(p.sort)) ?? defaultListQuery.sort;
   const shownParam = value(p.shown) ?? "";
@@ -106,6 +122,9 @@ export function applicationsListStateOf(params: SearchParams): ApplicationsListS
     view: applicationsViewOf(value(p.view)),
     query: {
       search: value(p.search) ?? defaultListQuery.search,
+      cities: values(p.city)
+        .map((city) => city.trim())
+        .filter((city) => city !== ""),
       statuses: applicationStatuses.filter((status) => requested.has(status)),
       waitingLong: value(p.waiting) === waitingLongParam,
       sort,
@@ -129,6 +148,12 @@ export function applicationsViewOf(value: unknown): ApplicationsView {
 }
 
 export const sourceRepositoryUrl = "https://github.com/Ivan-Gav/applicator";
+
+// The source of the city list and its licence, which requires attribution.
+export const placeDataSource = {
+  sourceHref: "https://www.geonames.org/",
+  licenceHref: "https://creativecommons.org/licenses/by/4.0/",
+} as const;
 
 export const redirectToParam = "redirectTo";
 

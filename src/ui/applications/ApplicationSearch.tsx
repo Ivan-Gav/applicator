@@ -87,7 +87,8 @@ export function ApplicationSearch({
         />
       </div>
       {hiddenFields.map(([field, fieldValue]) => (
-        <input key={field} type="hidden" name={field} value={fieldValue} />
+        // A parameter may repeat, such as one per city.
+        <input key={`${field}=${fieldValue}`} type="hidden" name={field} value={fieldValue} />
       ))}
     </form>
   );

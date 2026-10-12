@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { routes } from "@/app/routes";
+import { citySearch, routes } from "@/app/routes";
 import { ApplicationForm } from "@/ui/applications/ApplicationForm";
 import { messages } from "@/ui/messages";
 import { ColumnWidth, PageColumn } from "@/ui/shell/PageColumn";
@@ -16,7 +16,11 @@ export default function NewApplicationPage() {
       <h1 className="text-[30px] leading-tight font-semibold">
         {messages.applications.form.title}
       </h1>
-      <ApplicationForm save={createApplication} backHref={routes.applications} />
+      <ApplicationForm
+        save={createApplication}
+        backHref={routes.applications}
+        citySearch={citySearch}
+      />
     </PageColumn>
   );
 }

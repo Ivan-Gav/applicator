@@ -93,12 +93,18 @@ test("an application created through the form is listed, edited on its page, and
   await expect(
     page.getByRole("textbox", { name: t.form.salary.amounts.advertised.to }),
   ).toHaveValue("70000");
-  await page.getByRole("textbox", { name: t.form.labels.city }).fill("Osaka");
+  // Typed in German, picked from the reference list, stored by its canonical name.
+  const city = page.getByRole("combobox", { name: t.form.labels.city });
+  await city.fill("München");
+  await page.getByRole("option", { name: t.form.city.option("Munich", "München") }).click();
+  await expect(city).toHaveValue("Munich");
+  await expect(page.getByRole("textbox", { name: t.form.labels.country })).toHaveValue("Germany");
   await page.getByRole("button", { name: t.form.saveChanges }).click();
   await expect(page.getByText(t.form.saved)).toBeVisible();
 
   await page.reload();
-  await expect(page.getByRole("textbox", { name: t.form.labels.city })).toHaveValue("Osaka");
+  await expect(city).toHaveValue("Munich");
+  await expect(page.getByRole("textbox", { name: t.form.labels.country })).toHaveValue("Germany");
   await expect(
     page.getByRole("textbox", { name: t.form.salary.amounts.advertised.from }),
   ).toHaveValue("60000");
@@ -256,12 +262,14 @@ test("search, filters and order live in the URL and survive a reload", async ({ 
       positionTitle: "SRE",
       status: "applied",
       appliedAt: new Date(now - 5 * day),
+      city: "Berlin",
     },
     {
       companyName: "Globex",
       positionTitle: "Engineer",
       status: "interview",
       appliedAt: new Date(now - 9 * day),
+      city: "Munich",
     },
     {
       companyName: "Acme",
@@ -274,6 +282,7 @@ test("search, filters and order live in the URL and survive a reload", async ({ 
       positionTitle: "Engineer",
       status: "rejected",
       appliedAt: new Date(now - 30 * day),
+      city: "Vienna",
     },
   ]);
   // Each row's one link reads company, then position.
@@ -318,4 +327,24 @@ test("search, filters and order live in the URL and survive a reload", async ({ 
   // Clearing the filters keeps the order.
   await page.getByRole("link", { name: t.filters.clear }).click();
   await expect(companies()).toHaveText(startingWith(["Acme", "Globex", "Hooli", "Initech"]));
+
+  // Several cities at once, each a parameter of its own.
+  await page.getByRole("button", { name: t.filters.cities([]) }).click();
+  await page.getByRole("menuitemcheckbox", { name: /^Berlin/ }).click();
+  await page.getByRole("menuitemcheckbox", { name: /^Vienna/ }).click();
+  await page.keyboard.press("Escape");
+  const twoCities = applicationsPath(ApplicationsView.Active, {
+    ...defaultListQuery,
+    cities: ["Berlin", "Vienna"],
+    sort: ApplicationSort.Company,
+    direction: SortDirection.Ascending,
+  });
+  await expect(page).toHaveURL(isAt(twoCities));
+  await expect(companies()).toHaveText(startingWith(["Hooli", "Initech"]));
+
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: t.filters.cities(["Berlin", "Vienna"]) }),
+  ).toBeVisible();
+  await expect(companies()).toHaveText(startingWith(["Hooli", "Initech"]));
 });

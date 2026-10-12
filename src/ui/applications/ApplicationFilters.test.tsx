@@ -24,6 +24,7 @@ function renderFilters(overrides: Partial<ApplicationFiltersProps> = {}) {
         { status: "rejected", count: 12, on: false, href: "/list?rejected-on" },
       ]}
       waitingLong={null}
+      cities={null}
       clearHref={null}
       {...overrides}
     />,
@@ -68,6 +69,54 @@ describe("ApplicationFilters", () => {
     renderFilters();
 
     expect(screen.queryByText(t.filters.waitingLong(longWaitDays))).not.toBeInTheDocument();
+  });
+
+  it("names the chosen cities on the city menu, and ticks them inside", async () => {
+    const { user } = renderFilters({
+      cities: [
+        { city: "Berlin", count: 1, on: false, href: "/list?city=Berlin&city=Munich" },
+        { city: "Munich", count: 3, on: true, href: "/list" },
+      ],
+    });
+
+    await user.click(screen.getByRole("button", { name: t.filters.cities(["Munich"]) }));
+
+    expect(screen.getByRole("menuitemcheckbox", { name: "Berlin 1" })).not.toBeChecked();
+    expect(screen.getByRole("menuitemcheckbox", { name: "Munich 3" })).toBeChecked();
+  });
+
+  it("switches a city by going to the list with it switched, and stays open for the next", async () => {
+    const { user } = renderFilters({
+      cities: [
+        { city: "Berlin", count: 1, on: false, href: "/list?city=Berlin" },
+        { city: "Munich", count: 3, on: false, href: "/list?city=Munich" },
+      ],
+    });
+
+    await user.click(screen.getByRole("button", { name: t.filters.cities([]) }));
+    await user.click(screen.getByRole("menuitemcheckbox", { name: "Berlin 1" }));
+
+    expect(push).toHaveBeenCalledExactlyOnceWith("/list?city=Berlin", { scroll: false });
+    expect(screen.getByRole("menu")).toBeVisible();
+  });
+
+  it("counts the chosen cities on the menu when there are several", () => {
+    renderFilters({
+      cities: [
+        { city: "Berlin", count: 1, on: true, href: "/list?city=Munich" },
+        { city: "Munich", count: 3, on: true, href: "/list?city=Berlin" },
+      ],
+    });
+
+    expect(
+      screen.getByRole("button", { name: t.filters.cities(["Berlin", "Munich"]) }),
+    ).toBeVisible();
+  });
+
+  it("leaves the city filter out when no application has a city", () => {
+    renderFilters();
+
+    expect(screen.queryByRole("button", { name: t.filters.cities([]) })).not.toBeInTheDocument();
   });
 
   it("offers to clear the filters only while some are on", () => {

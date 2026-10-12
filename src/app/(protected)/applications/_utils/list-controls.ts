@@ -14,6 +14,7 @@ import {
   SortDirection,
 } from "@/domain/application/list";
 import { type ApplicationStatus, applicationStatuses } from "@/domain/application/model";
+import { normalizeForSearch } from "@/lib/normalize-for-search";
 import type { ApplicationListControls, SortLink } from "@/ui/applications/ApplicationList";
 
 type ListState = Pick<ApplicationsListState, "view" | "query">;
@@ -36,6 +37,16 @@ export function applicationListControls(
   const offered = applicationStatuses.filter(
     (status) => counts.has(status) || query.statuses.includes(status),
   );
+  // Likewise a city filtered on, though the view no longer holds it.
+  // Spellings differing only in case or accents name one city.
+  const chosenCities = new Set(query.cities.map(normalizeForSearch));
+  const viewCities = new Set(list.cityCounts.map(({ city }) => normalizeForSearch(city)));
+  const cities = [
+    ...list.cityCounts,
+    ...query.cities
+      .filter((city) => !viewCities.has(normalizeForSearch(city)))
+      .map((city) => ({ city, count: 0 })),
+  ];
 
   return {
     search: {
@@ -62,9 +73,25 @@ export function applicationListControls(
               count: list.waitingLongCount,
             }
           : null,
+      cities:
+        cities.length > 0
+          ? cities.map(({ city, count }) => ({
+              city,
+              count,
+              on: chosenCities.has(normalizeForSearch(city)),
+              href: path({
+                cities: chosenCities.has(normalizeForSearch(city))
+                  ? query.cities.filter(
+                      (chosen) => normalizeForSearch(chosen) !== normalizeForSearch(city),
+                    )
+                  : [...query.cities, city],
+              }),
+            }))
+          : null,
       clearHref: isFiltered(query)
         ? path({
             search: defaultListQuery.search,
+            cities: defaultListQuery.cities,
             statuses: defaultListQuery.statuses,
             waitingLong: defaultListQuery.waitingLong,
           })
