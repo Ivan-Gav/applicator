@@ -3,10 +3,15 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { unstable_rethrow } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { flushSync } from "react-dom";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
+import type {
+  ApplicationJsonReading,
+  JsonApplicationField,
+  RejectedValue,
+} from "@/domain/application/json";
 import {
   type Application,
   applicationStatuses,
@@ -20,7 +25,7 @@ import {
   type CreateApplicationInput,
   createApplicationSchema,
 } from "@/domain/application/schema";
-import { startOfLocalDay } from "@/lib/date";
+import { localDay, startOfLocalDay } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { Alert, AlertDescription } from "@/ui/kit/alert";
 import { Button } from "@/ui/kit/button";
@@ -33,6 +38,8 @@ import { messages } from "@/ui/messages";
 import type { SuggestionSearch } from "@/ui/SuggestionField";
 import { CityField } from "./CityField";
 import { ContactFields } from "./ContactFields";
+import { JsonPaste } from "./JsonPaste";
+import { LeaveEmptyButton } from "./LeaveEmptyButton";
 import { SalaryFields } from "./SalaryFields";
 import { SourceField } from "./SourceField";
 import {
@@ -40,7 +47,19 @@ import {
   isApplicationFormField,
   isSalaryFormField,
 } from "./application-form-fields";
-import { applicationFormValues, hasContact, hasSalary } from "./application-form-values";
+import {
+  applicationFormValues,
+  formValuesFromJson,
+  hasContact,
+  hasSalary,
+} from "./application-form-values";
+import {
+  changeConcerns,
+  firstPastedValueControl,
+  pastedValueControl,
+  pastedValueError,
+  rejectedWithin,
+} from "./pasted-values";
 import { advertisedSalaryText } from "./salary-text";
 
 export type ApplicationFormProps = {
@@ -56,6 +75,8 @@ export type ApplicationFormProps = {
   sourceSearch: SuggestionSearch;
   /** The application to edit; without it the form creates a new one. */
   application?: Application;
+  /** Where the JSON format is described; a new application given one can be filled in from JSON. */
+  jsonFormatHref?: string;
 };
 
 const t = messages.applications.form;
@@ -71,12 +92,17 @@ const blankAsNull = (value: unknown) => (value === "" ? null : value);
 const dayAsInstant = (value: unknown) =>
   value === "" ? null : typeof value === "string" ? (startOfLocalDay(value) ?? value) : value;
 
+// What the date input shows for the form value: a picked day, or text the schema will reject.
+const dayShown = (value: unknown) =>
+  value instanceof Date ? localDay(value) : typeof value === "string" ? value : "";
+
 export function ApplicationForm({
   save,
   backHref,
   citySearch,
   sourceSearch,
   application,
+  jsonFormatHref,
 }: ApplicationFormProps) {
   const editing = application !== undefined;
   const [failure, setFailure] = useState<string | null>(null);
@@ -90,12 +116,19 @@ export function ApplicationForm({
   const [contactOpen, setContactOpen] = useState(
     application ? hasContact(application.contact) : false,
   );
+  // Pasted values that fit no field; each is shown until its field is changed.
+  const [pasteRejected, setPasteRejected] = useState<readonly RejectedValue[]>([]);
+  // Whether a save was refused for the marks; said only while some remain.
+  const [pasteBlocked, setPasteBlocked] = useState(false);
   const { errors, isSubmitting, isDirty } = form.formState;
   const pending = saving || isSubmitting;
   // An edit with nothing changed has nothing to save.
   const unchanged = editing && !isDirty;
-  const salaryShown = salaryOpen || errors.salary !== undefined;
-  const contactShown = contactOpen || errors.contact !== undefined;
+  const salaryPasteRejected = rejectedWithin(pasteRejected, "salary");
+  const contactPasteRejected = rejectedWithin(pasteRejected, "contact");
+  const salaryShown = salaryOpen || errors.salary !== undefined || salaryPasteRejected.length > 0;
+  const contactShown =
+    contactOpen || errors.contact !== undefined || contactPasteRejected.length > 0;
   const contactNameAndRole = useWatch({
     control: form.control,
     name: ["contact.name", "contact.role"],
@@ -111,6 +144,45 @@ export function ApplicationForm({
       (part): part is string => typeof part === "string" && part.trim() !== "",
     ),
   );
+
+  useEffect(() => {
+    return form.subscribe({
+      formState: { values: true },
+      callback: ({ name }) => {
+        if (name !== undefined) {
+          // The same array when nothing goes, so a keystroke re-renders nothing.
+          setPasteRejected((rejected) => {
+            const kept = rejected.filter(({ field }) => !changeConcerns(name, field));
+            return kept.length === rejected.length ? rejected : kept;
+          });
+        }
+      },
+    });
+  }, [form]);
+
+  function fillInFromJson(reading: ApplicationJsonReading) {
+    const next = formValuesFromJson(reading);
+    for (const key of Object.keys(next) as (keyof CreateApplicationInput)[]) {
+      form.setValue(key, next[key], { shouldDirty: true });
+    }
+    // After the values: setting them counts as changing them, which clears their marks.
+    setPasteRejected(reading.rejected);
+    if (reading.values.salary) {
+      setSalaryOpen(true);
+    }
+    if (reading.values.contact) {
+      setContactOpen(true);
+    }
+  }
+
+  // Drops the marks of `fields`, accepting them empty, and returns focus to the first one's control.
+  function leaveEmpty(fields: readonly JsonApplicationField[]) {
+    setPasteRejected((rejected) => rejected.filter(({ field }) => !fields.includes(field)));
+    const [first] = fields;
+    if (first !== undefined) {
+      form.setFocus(pastedValueControl(first));
+    }
+  }
 
   function showRejection({ invalidFields }: ApplicationRejection) {
     const shown = [
@@ -128,6 +200,13 @@ export function ApplicationForm({
   const submit = form.handleSubmit(
     (values) => {
       setFailure(null);
+      // A marked field must be changed or left empty on purpose before anything is saved.
+      const marked = firstPastedValueControl(pasteRejected);
+      setPasteBlocked(marked !== undefined);
+      if (marked !== undefined) {
+        form.setFocus(marked);
+        return;
+      }
       const submitted = form.getValues();
       startSaving(async () => {
         try {
@@ -148,6 +227,7 @@ export function ApplicationForm({
       });
     },
     (invalid) => {
+      setPasteBlocked(pasteRejected.length > 0);
       // Open before react-hook-form moves focus to the first error, which it
       // cannot do inside a closed <details>.
       flushSync(() => {
@@ -161,27 +241,44 @@ export function ApplicationForm({
     },
   );
 
+  const isInvalid = (field: ApplicationFormField) =>
+    errors[field] !== undefined || pasteRejected.some((rejection) => rejection.field === field);
+
   function describedBy(field: ApplicationFormField, hintId?: string) {
-    const ids = [errors[field] ? `${field}-error` : undefined, hintId].filter(Boolean);
+    const ids = [isInvalid(field) ? `${field}-error` : undefined, hintId].filter(Boolean);
     return {
-      "aria-invalid": errors[field] ? true : undefined,
+      "aria-invalid": isInvalid(field) ? true : undefined,
       "aria-describedby": ids.length > 0 ? ids.join(" ") : undefined,
     } as const;
   }
 
-  // Always this form's own wording, never the schema's message.
+  // Always this form's own wording, never the schema's message; then what was pasted.
   function error(field: ApplicationFormField) {
+    const pasted = pasteRejected.filter((rejection) => rejection.field === field);
     return (
-      <FieldError
-        id={`${field}-error`}
-        errors={errors[field] ? [{ message: t.errors[field] }] : []}
-      />
+      <>
+        <FieldError
+          id={`${field}-error`}
+          errors={
+            isInvalid(field) ? [{ message: t.errors[field] }, ...pasted.map(pastedValueError)] : []
+          }
+        />
+        {pasted.length > 0 && (
+          <LeaveEmptyButton field={t.labels[field]} onClick={() => leaveEmpty([field])} />
+        )}
+      </>
     );
   }
 
+  const invalidMark = (field: ApplicationFormField) => (isInvalid(field) ? true : undefined);
+
   return (
     <form onSubmit={(event) => void submit(event)} noValidate className="flex flex-col gap-4.5">
-      <Field data-invalid={errors.companyName ? true : undefined}>
+      {!editing && jsonFormatHref !== undefined && (
+        <JsonPaste onRead={fillInFromJson} formatHref={jsonFormatHref} />
+      )}
+
+      <Field data-invalid={invalidMark("companyName")}>
         <FieldLabel htmlFor="companyName">{t.labels.companyName}</FieldLabel>
         <Input
           id="companyName"
@@ -193,7 +290,7 @@ export function ApplicationForm({
       </Field>
 
       <div className="grid gap-3.5 sm:grid-cols-[2fr_1fr]">
-        <Field data-invalid={errors.positionTitle ? true : undefined}>
+        <Field data-invalid={invalidMark("positionTitle")}>
           <FieldLabel htmlFor="positionTitle">{t.labels.positionTitle}</FieldLabel>
           <Input
             id="positionTitle"
@@ -204,7 +301,7 @@ export function ApplicationForm({
           {error("positionTitle")}
         </Field>
 
-        <Field data-invalid={errors.seniority ? true : undefined}>
+        <Field data-invalid={invalidMark("seniority")}>
           <FieldLabel htmlFor="seniority">{t.labels.seniority}</FieldLabel>
           <NativeSelect
             id="seniority"
@@ -225,7 +322,7 @@ export function ApplicationForm({
 
       {!editing && (
         <div className="grid gap-3.5 sm:grid-cols-2">
-          <Field data-invalid={errors.status ? true : undefined}>
+          <Field data-invalid={invalidMark("status")}>
             <FieldLabel htmlFor="status">{t.labels.status}</FieldLabel>
             <NativeSelect
               id="status"
@@ -242,13 +339,23 @@ export function ApplicationForm({
             {error("status")}
           </Field>
 
-          <Field data-invalid={errors.appliedAt ? true : undefined}>
+          <Field data-invalid={invalidMark("appliedAt")}>
             <FieldLabel htmlFor="appliedAt">{t.labels.appliedAt}</FieldLabel>
-            <Input
-              id="appliedAt"
-              type="date"
-              {...describedBy("appliedAt")}
-              {...form.register("appliedAt", { setValueAs: dayAsInstant })}
+            <Controller
+              control={form.control}
+              name="appliedAt"
+              render={({ field }) => (
+                <Input
+                  id="appliedAt"
+                  type="date"
+                  ref={field.ref}
+                  name={field.name}
+                  value={dayShown(field.value)}
+                  onChange={(event) => field.onChange(dayAsInstant(event.target.value))}
+                  onBlur={field.onBlur}
+                  {...describedBy("appliedAt")}
+                />
+              )}
             />
             {error("appliedAt")}
           </Field>
@@ -256,7 +363,7 @@ export function ApplicationForm({
       )}
 
       <div className="grid gap-3.5 sm:grid-cols-3">
-        <Field data-invalid={errors.city ? true : undefined}>
+        <Field data-invalid={invalidMark("city")}>
           <FieldLabel htmlFor="city">{t.labels.city}</FieldLabel>
           <Controller
             control={form.control}
@@ -284,7 +391,7 @@ export function ApplicationForm({
           {error("city")}
         </Field>
 
-        <Field data-invalid={errors.country ? true : undefined}>
+        <Field data-invalid={invalidMark("country")}>
           <FieldLabel htmlFor="country">{t.labels.country}</FieldLabel>
           <Input
             id="country"
@@ -295,7 +402,7 @@ export function ApplicationForm({
           {error("country")}
         </Field>
 
-        <Field data-invalid={errors.workMode ? true : undefined}>
+        <Field data-invalid={invalidMark("workMode")}>
           <FieldLabel htmlFor="workMode">{t.labels.workMode}</FieldLabel>
           <NativeSelect
             id="workMode"
@@ -315,7 +422,7 @@ export function ApplicationForm({
       </div>
 
       <div className="grid gap-3.5 sm:grid-cols-2">
-        <Field data-invalid={errors.channel ? true : undefined}>
+        <Field data-invalid={invalidMark("channel")}>
           <FieldLabel htmlFor="channel">{t.labels.channel}</FieldLabel>
           <NativeSelect
             id="channel"
@@ -332,7 +439,7 @@ export function ApplicationForm({
           {error("channel")}
         </Field>
 
-        <Field data-invalid={errors.source ? true : undefined}>
+        <Field data-invalid={invalidMark("source")}>
           <FieldLabel htmlFor="source">{t.labels.source}</FieldLabel>
           <Controller
             control={form.control}
@@ -355,7 +462,7 @@ export function ApplicationForm({
       </div>
 
       <div className="grid gap-3.5 sm:grid-cols-2">
-        <Field data-invalid={errors.sourceUrl ? true : undefined}>
+        <Field data-invalid={invalidMark("sourceUrl")}>
           <FieldLabel htmlFor="sourceUrl">{t.labels.sourceUrl}</FieldLabel>
           <Input
             id="sourceUrl"
@@ -368,7 +475,7 @@ export function ApplicationForm({
           {error("sourceUrl")}
         </Field>
 
-        <Field data-invalid={errors.applicationUrl ? true : undefined}>
+        <Field data-invalid={invalidMark("applicationUrl")}>
           <FieldLabel htmlFor="applicationUrl">{t.labels.applicationUrl}</FieldLabel>
           <Input
             id="applicationUrl"
@@ -382,7 +489,7 @@ export function ApplicationForm({
         </Field>
       </div>
 
-      <Field data-invalid={errors.notes ? true : undefined}>
+      <Field data-invalid={invalidMark("notes")}>
         <FieldLabel htmlFor="notes">{t.labels.notes}</FieldLabel>
         <Textarea id="notes" rows={4} {...describedBy("notes")} {...form.register("notes")} />
         {error("notes")}
@@ -390,6 +497,8 @@ export function ApplicationForm({
 
       <SalaryFields
         register={form.register}
+        pasteRejected={salaryPasteRejected}
+        onLeaveEmpty={leaveEmpty}
         summary={salarySummary}
         errors={errors.salary}
         open={salaryShown}
@@ -398,11 +507,21 @@ export function ApplicationForm({
 
       <ContactFields
         register={form.register}
+        pasteRejected={contactPasteRejected}
+        onLeaveEmpty={leaveEmpty}
         summary={contactSummary}
         errors={errors.contact}
         open={contactShown}
         onOpenChange={setContactOpen}
       />
+
+      {pasteBlocked && pasteRejected.length > 0 && (
+        <Alert variant="destructive">
+          <AlertDescription>
+            <p className="text-foreground">{t.paste.unresolved}</p>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {failure && (
         <Alert variant="destructive">

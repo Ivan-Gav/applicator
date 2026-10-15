@@ -156,6 +156,9 @@ export function applicationsViewOf(value: unknown): ApplicationsView {
 
 export const sourceRepositoryUrl = "https://github.com/Ivan-Gav/applicator";
 
+/** The description of the JSON an application can be pasted as. */
+export const applicationJsonFormatUrl = `${sourceRepositoryUrl}/blob/main/docs/application-json.md`;
+
 // The source of the city list and its licence, which requires attribution.
 export const placeDataSource = {
   sourceHref: "https://www.geonames.org/",

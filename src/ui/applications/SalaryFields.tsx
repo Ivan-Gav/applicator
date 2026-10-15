@@ -2,17 +2,24 @@
 
 import { Fragment } from "react";
 import type { FieldErrors, UseFormRegister } from "react-hook-form";
+import type { JsonApplicationField, RejectedValue } from "@/domain/application/json";
 import { salaryAmounts, salaryPeriods } from "@/domain/application/model";
 import type { CreateApplicationInput } from "@/domain/application/schema";
 import { Field, FieldError, FieldLabel } from "@/ui/kit/field";
 import { Input } from "@/ui/kit/input";
 import { NativeSelect, NativeSelectOption } from "@/ui/kit/native-select";
 import { messages } from "@/ui/messages";
+import { LeaveEmptyButton } from "./LeaveEmptyButton";
 import { panel, panelSummary } from "./panel";
+import { pastedValueError, rejectedWithin } from "./pasted-values";
 
 export type SalaryFieldsProps = {
   register: UseFormRegister<CreateApplicationInput>;
   errors: FieldErrors<CreateApplicationInput>["salary"];
+  /** Pasted values meant for the salary that fit no field, each shown where it was meant to go. */
+  pasteRejected: readonly RejectedValue[];
+  /** Accepts the marked fields empty. */
+  onLeaveEmpty: (fields: readonly JsonApplicationField[]) => void;
   /** Shown at the end of the title line, e.g. "60,000–70,000 EUR per year"; empty for none. */
   summary: string;
   open: boolean;
@@ -20,6 +27,7 @@ export type SalaryFieldsProps = {
 };
 
 const t = messages.applications.form.salary;
+const paste = messages.applications.form.paste;
 const hintId = "salary-hint";
 
 // Digits become a number, blank becomes unknown; anything else stays text for
@@ -43,9 +51,19 @@ function describedBy(invalid: boolean, errorId: string, withHint = false) {
   } as const;
 }
 
-export function SalaryFields({ register, errors, summary, open, onOpenChange }: SalaryFieldsProps) {
-  const currencyInvalid = errors?.currency !== undefined;
-  const periodInvalid = errors?.period !== undefined;
+export function SalaryFields({
+  register,
+  errors,
+  pasteRejected,
+  onLeaveEmpty,
+  summary,
+  open,
+  onOpenChange,
+}: SalaryFieldsProps) {
+  const pastedFor = (part: string) => rejectedWithin(pasteRejected, `salary.${part}`);
+  const pastedSalary = pasteRejected.filter(({ field }) => field === "salary");
+  const currencyInvalid = errors?.currency !== undefined || pastedFor("currency").length > 0;
+  const periodInvalid = errors?.period !== undefined || pastedFor("period").length > 0;
 
   return (
     <details
@@ -63,11 +81,22 @@ export function SalaryFields({ register, errors, summary, open, onOpenChange }: 
         <p id={hintId} className="text-[13px] text-muted-foreground">
           {t.hint}
         </p>
+        <FieldError
+          errors={
+            pastedSalary.length > 0
+              ? [{ message: paste.blockRejected }, ...pastedSalary.map(pastedValueError)]
+              : []
+          }
+        />
+        {pastedSalary.length > 0 && (
+          <LeaveEmptyButton field={t.title} onClick={() => onLeaveEmpty(["salary"])} />
+        )}
 
         {/* A row per amount: its label, then the from and to boxes, which carry their own names. */}
         <div className="grid grid-cols-[7rem_1fr_1fr] items-center gap-x-2.5 gap-y-2">
           {salaryAmounts.map((amount) => {
-            const invalid = errors?.[amount] !== undefined;
+            const pasted = pastedFor(amount);
+            const invalid = errors?.[amount] !== undefined || pasted.length > 0;
             const errorId = `salary-${amount}-error`;
             return (
               <Fragment key={amount}>
@@ -94,8 +123,16 @@ export function SalaryFields({ register, errors, summary, open, onOpenChange }: 
                   <FieldError
                     id={errorId}
                     className="col-span-3"
-                    errors={[{ message: t.errors.amount }]}
+                    errors={[{ message: t.errors.amount }, ...pasted.map(pastedValueError)]}
                   />
+                )}
+                {pasted.length > 0 && (
+                  <div className="col-span-3">
+                    <LeaveEmptyButton
+                      field={t.rows[amount]}
+                      onClick={() => onLeaveEmpty(pasted.map(({ field }) => field))}
+                    />
+                  </div>
                 )}
               </Fragment>
             );
@@ -115,8 +152,18 @@ export function SalaryFields({ register, errors, summary, open, onOpenChange }: 
             />
             <FieldError
               id="salary-currency-error"
-              errors={currencyInvalid ? [{ message: t.errors.currency }] : []}
+              errors={
+                currencyInvalid
+                  ? [{ message: t.errors.currency }, ...pastedFor("currency").map(pastedValueError)]
+                  : []
+              }
             />
+            {pastedFor("currency").length > 0 && (
+              <LeaveEmptyButton
+                field={t.currency}
+                onClick={() => onLeaveEmpty(["salary.currency"])}
+              />
+            )}
           </Field>
 
           <Field data-invalid={periodInvalid ? true : undefined}>
@@ -135,8 +182,15 @@ export function SalaryFields({ register, errors, summary, open, onOpenChange }: 
             </NativeSelect>
             <FieldError
               id="salary-period-error"
-              errors={periodInvalid ? [{ message: t.errors.period }] : []}
+              errors={
+                periodInvalid
+                  ? [{ message: t.errors.period }, ...pastedFor("period").map(pastedValueError)]
+                  : []
+              }
             />
+            {pastedFor("period").length > 0 && (
+              <LeaveEmptyButton field={t.period} onClick={() => onLeaveEmpty(["salary.period"])} />
+            )}
           </Field>
         </div>
       </div>

@@ -9,6 +9,7 @@ import {
   StatusChangeFailure,
   type WorkMode,
 } from "@/domain/application/model";
+import { JsonReadFailure } from "@/domain/application/json";
 import type { SortDirection } from "@/domain/application/list";
 import { SignInFailureReason } from "@/domain/user/model";
 import type { ApplicationFormField } from "./applications/application-form-fields";
@@ -190,6 +191,73 @@ export const messages = {
     } satisfies Record<Channel, string>,
     form: {
       title: "New application",
+      paste: {
+        title: "Fill in from JSON",
+        label: "Application as JSON",
+        hint: "Paste one application as a JSON object. It only fills in the form: check the fields, then save as usual.",
+        format: "Read about the format",
+        apply: "Fill in the form",
+        failure: {
+          [JsonReadFailure.Malformed]:
+            "This is not valid JSON. Check for missing quotes, commas or brackets.",
+          [JsonReadFailure.List]: "Paste one application at a time, not a list.",
+          [JsonReadFailure.NotAnObject]: 'Paste a JSON object, such as { "companyName": "Acme" }.',
+        } satisfies Record<JsonReadFailure, string>,
+        filled: "The form is filled in. Check it, then save.",
+        rejected: (count: number) =>
+          count === 1
+            ? "1 value did not fit its field. The field is left empty and marked: change it, or choose “Leave empty”, before saving."
+            : `${count} values did not fit their fields. The fields are left empty and marked: change each, or choose “Leave empty”, before saving.`,
+        // Saving is refused while a mark stays.
+        unresolved:
+          "Some pasted values did not fit. Change each marked field, or choose “Leave empty”, before saving.",
+        // Accepts a marked field as it is; the visible text first, then the field it concerns.
+        leaveEmpty: "Leave empty",
+        leaveEmptyLabel: (field: string) => `Leave empty: ${field}`,
+        example: {
+          label: "Example JSON:",
+          copy: "Copy",
+          copyLabel: "Copy example JSON",
+          download: "Download",
+          downloadLabel: "Download example JSON",
+          fileName: "application-example.json",
+          copied: "Example JSON copied.",
+          copyFailed: "The example could not be copied. Download it instead.",
+          // Also the first example of docs/application-json.md; a test keeps the two the same.
+          value: {
+            companyName: "Initech",
+            positionTitle: "Senior Platform Engineer",
+            seniority: "senior",
+            status: "applied",
+            appliedAt: "2026-09-01",
+            city: "Munich",
+            country: "Germany",
+            workMode: "hybrid",
+            channel: "direct",
+            source: "LinkedIn",
+            sourceUrl: "https://example.com/jobs/platform-engineer",
+            applicationUrl: "https://example.com/jobs/platform-engineer/apply",
+            notes: "Kubernetes and Go. Team of six, on call one week in eight.",
+            salary: {
+              advertised: { min: 75000, max: 90000 },
+              asked: { min: 85000, max: 85000 },
+              currency: "EUR",
+              period: "year",
+            },
+            contact: {
+              name: "Jane Doe",
+              role: "Technical Recruiter",
+              email: "jane.doe@example.com",
+            },
+          },
+        },
+        unknownKeys: (keys: readonly string[]) =>
+          `Not part of an application, so left out: ${keys.join(", ")}.`,
+        // Shown under a field beside its error: what arrived for it.
+        rejectedValue: (value: string) => `Pasted: ${value}`,
+        // A salary or contact given as something other than an object.
+        blockRejected: "Expected an object with the fields the format lists.",
+      },
       labels: {
         companyName: "Company",
         positionTitle: "Position",

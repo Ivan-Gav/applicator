@@ -1,16 +1,23 @@
 "use client";
 
 import type { FieldErrors, UseFormRegister } from "react-hook-form";
+import type { JsonApplicationField, RejectedValue } from "@/domain/application/json";
 import { type ContactPart, contactParts } from "@/domain/application/model";
 import type { CreateApplicationInput } from "@/domain/application/schema";
 import { Field, FieldError, FieldLabel } from "@/ui/kit/field";
 import { Input } from "@/ui/kit/input";
 import { messages } from "@/ui/messages";
+import { LeaveEmptyButton } from "./LeaveEmptyButton";
 import { panel, panelSummary } from "./panel";
+import { pastedValueError, rejectedWithin } from "./pasted-values";
 
 export type ContactFieldsProps = {
   register: UseFormRegister<CreateApplicationInput>;
   errors: FieldErrors<CreateApplicationInput>["contact"];
+  /** Pasted values meant for the contact that fit no field, each shown where it was meant to go. */
+  pasteRejected: readonly RejectedValue[];
+  /** Accepts the marked fields empty. */
+  onLeaveEmpty: (fields: readonly JsonApplicationField[]) => void;
   /** Shown beside the title, e.g. "Jane Doe · Recruiter"; empty for none. */
   summary: string;
   open: boolean;
@@ -18,6 +25,7 @@ export type ContactFieldsProps = {
 };
 
 const t = messages.applications.form.contact;
+const paste = messages.applications.form.paste;
 
 // Addresses and numbers read better in a fixed-width face.
 const mono = "font-mono text-[13px] md:text-[13px]";
@@ -33,10 +41,13 @@ const inputProps = {
 export function ContactFields({
   register,
   errors,
+  pasteRejected,
+  onLeaveEmpty,
   summary,
   open,
   onOpenChange,
 }: ContactFieldsProps) {
+  const pastedContact = pasteRejected.filter(({ field }) => field === "contact");
   return (
     <details
       open={open}
@@ -50,10 +61,24 @@ export function ContactFields({
         )}
       </summary>
       <div className="mt-3 grid gap-3.5 sm:grid-cols-2">
+        <FieldError
+          className="sm:col-span-2"
+          errors={
+            pastedContact.length > 0
+              ? [{ message: paste.blockRejected }, ...pastedContact.map(pastedValueError)]
+              : []
+          }
+        />
+        {pastedContact.length > 0 && (
+          <div className="sm:col-span-2">
+            <LeaveEmptyButton field={t.title} onClick={() => onLeaveEmpty(["contact"])} />
+          </div>
+        )}
         {contactParts.map((part) => {
           const id = `contact-${part}`;
           const errorId = `${id}-error`;
-          const invalid = errors?.[part] !== undefined;
+          const pasted = rejectedWithin(pasteRejected, `contact.${part}`);
+          const invalid = errors?.[part] !== undefined || pasted.length > 0;
           return (
             <Field
               key={part}
@@ -68,7 +93,18 @@ export function ContactFields({
                 {...inputProps[part]}
                 {...register(`contact.${part}`)}
               />
-              <FieldError id={errorId} errors={invalid ? [{ message: t.errors[part] }] : []} />
+              <FieldError
+                id={errorId}
+                errors={
+                  invalid ? [{ message: t.errors[part] }, ...pasted.map(pastedValueError)] : []
+                }
+              />
+              {pasted.length > 0 && (
+                <LeaveEmptyButton
+                  field={t.labels[part]}
+                  onClick={() => onLeaveEmpty(pasted.map(({ field }) => field))}
+                />
+              )}
             </Field>
           );
         })}

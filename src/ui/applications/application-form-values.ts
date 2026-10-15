@@ -1,3 +1,4 @@
+import type { ApplicationJsonReading } from "@/domain/application/json";
 import {
   type Application,
   type Contact,
@@ -5,6 +6,7 @@ import {
   type SalaryRange,
 } from "@/domain/application/model";
 import type { CreateApplicationInput } from "@/domain/application/schema";
+import { startOfLocalDay } from "@/lib/date";
 
 const unknownRange: SalaryRange = { min: null, max: null };
 
@@ -89,4 +91,29 @@ export function hasSalary({
     [advertised, estimated, asked].some(({ min, max }) => min !== null || max !== null) ||
     period !== defaultSalaryPeriod
   );
+}
+
+/**
+ * A new form filled in from a JSON reading: each accepted value in its field,
+ * everything else as a new form starts. A rejected currency leaves the field
+ * empty rather than at the default. A day applied starts in this runtime's
+ * time zone, as one picked in the form does.
+ */
+export function formValuesFromJson({
+  values,
+  rejected,
+}: ApplicationJsonReading): CreateApplicationInput {
+  const blank = applicationFormValues();
+  const { appliedAt, salary, contact, ...plain } = values;
+  const filledSalary = { ...blank.salary, ...salary };
+  if (rejected.some(({ field }) => field === "salary.currency")) {
+    filledSalary.currency = "";
+  }
+  return {
+    ...blank,
+    ...plain,
+    appliedAt: appliedAt === undefined ? null : startOfLocalDay(appliedAt),
+    salary: filledSalary,
+    contact: { ...blank.contact, ...contact },
+  };
 }

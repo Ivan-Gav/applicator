@@ -22,6 +22,7 @@ import { applicationFormFields, createOnlyFormFields } from "./application-form-
 const t = messages.applications.form;
 const citySearch = { action: "/api/cities", name: "q" };
 const sourceSearch = { action: "/api/sources", name: "q" };
+const jsonFormatHref = "https://example.com/application-json";
 const hamburg: CityMatch = {
   id: 2911298,
   name: "Hamburg",
@@ -60,6 +61,7 @@ function renderForm(
         citySearch={citySearch}
         sourceSearch={sourceSearch}
         application={application}
+        jsonFormatHref={jsonFormatHref}
       />
       <Toaster />
     </>,
@@ -616,5 +618,225 @@ describe("ApplicationForm editing an application", () => {
     expect(await screen.findByText(t.saved)).toBeVisible();
     expect(await screen.findByRole("button", { name: t.saveChanges })).toBeDisabled();
     expect(textbox(t.labels.notes)).toHaveValue("Second round bookedx");
+  });
+});
+
+describe("ApplicationForm filled in from JSON", () => {
+  const p = t.paste;
+
+  async function pasteJson(user: ReturnType<typeof userEvent.setup>, json: unknown) {
+    await user.click(screen.getByText(p.title));
+    await user.click(textbox(p.label));
+    await user.paste(typeof json === "string" ? json : JSON.stringify(json));
+    await user.click(screen.getByRole("button", { name: p.apply }));
+  }
+
+  const pasted = {
+    companyName: "Initech",
+    positionTitle: "Platform Engineer",
+    seniority: "Senior",
+    status: "Applied",
+    appliedAt: "1 September 2026",
+    city: "Hamburg",
+    country: "Germany",
+    workMode: "Remote",
+    channel: "agency",
+    source: "LinkedIn",
+    sourceUrl: "https://example.com/jobs/1",
+    notes: "Cover letter drafted.",
+    salary: { advertised: { min: "60,000", max: 70000 }, currency: "€", period: "Monthly" },
+    contact: { name: "Jane Doe", email: "jane@example.com" },
+  };
+
+  it("fills every field and saves through the normal path", async () => {
+    const { createApplication, user } = renderForm();
+
+    await pasteJson(user, pasted);
+
+    expect(screen.getByRole("status")).toHaveTextContent(p.filled);
+    expect(textbox(t.labels.companyName)).toHaveValue("Initech");
+    expect(screen.getByRole("combobox", { name: t.labels.workMode })).toHaveValue("remote");
+    expect(screen.getByLabelText(t.labels.appliedAt)).toHaveValue("2026-09-01");
+    expect(screen.getByRole("combobox", { name: t.labels.city })).toHaveValue("Hamburg");
+    expect(textbox(t.salary.amounts.advertised.from)).toBeVisible();
+    expect(textbox(t.salary.amounts.advertised.from)).toHaveValue("60000");
+    expect(textbox(t.contact.labels.name)).toHaveValue("Jane Doe");
+    await user.click(submitButton());
+
+    await vi.waitFor(() => expect(createApplication).toHaveBeenCalledOnce());
+    expect(createApplication.mock.calls[0]?.[0]).toMatchObject({
+      companyName: "Initech",
+      positionTitle: "Platform Engineer",
+      seniority: "senior",
+      status: "applied",
+      appliedAt: new Date(2026, 8, 1),
+      city: "Hamburg",
+      country: "Germany",
+      workMode: "remote",
+      channel: "agency",
+      source: "LinkedIn",
+      sourceUrl: "https://example.com/jobs/1",
+      notes: "Cover letter drafted.",
+      salary: {
+        advertised: { min: 60_000, max: 70_000 },
+        currency: "EUR",
+        period: "month",
+      },
+      contact: { name: "Jane Doe", email: "jane@example.com", role: null },
+    });
+  });
+
+  it("marks a value that fits no field with what arrived, and fills every other field", async () => {
+    const { user } = renderForm();
+
+    await pasteJson(user, {
+      ...pasted,
+      workMode: "Full-time",
+      contact: { email: "jane at example" },
+    });
+
+    expect(screen.getByRole("status")).toHaveTextContent(p.rejected(2));
+    const workMode = screen.getByRole("combobox", { name: t.labels.workMode });
+    expect(workMode).toHaveValue("");
+    expect(workMode).toBeInvalid();
+    expect(workMode).toHaveAccessibleDescription(
+      expect.stringContaining(p.rejectedValue("“Full-time”")),
+    );
+    expect(textbox(t.contact.labels.email)).toBeVisible();
+    expect(textbox(t.contact.labels.email)).toHaveValue("");
+    expect(textbox(t.contact.labels.email)).toHaveAccessibleDescription(
+      expect.stringContaining(p.rejectedValue("“jane at example”")),
+    );
+    expect(textbox(t.labels.companyName)).toHaveValue("Initech");
+    expect(textbox(t.labels.companyName)).toBeValid();
+    expect(screen.getByLabelText(t.labels.appliedAt)).toHaveValue("2026-09-01");
+    expect(textbox(t.salary.amounts.advertised.to)).toHaveValue("70000");
+
+    // Fixing the field by hand clears its mark; the other stays.
+    await user.selectOptions(workMode, messages.applications.workMode.hybrid);
+    expect(workMode).toBeValid();
+    expect(textbox(t.contact.labels.email)).toBeInvalid();
+  });
+
+  it("refuses to save while a mark remains, and saves once it is left empty on purpose", async () => {
+    const { createApplication, user } = renderForm();
+
+    await pasteJson(user, {
+      ...pasted,
+      workMode: "Full-time",
+      contact: { email: "jane at example" },
+    });
+    await user.click(submitButton());
+
+    expect(screen.getByText(p.unresolved)).toBeVisible();
+    expect(screen.getByRole("combobox", { name: t.labels.workMode })).toHaveFocus();
+    expect(createApplication).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: p.leaveEmptyLabel(t.labels.workMode) }));
+    expect(screen.getByRole("combobox", { name: t.labels.workMode })).toBeValid();
+    expect(screen.getByRole("combobox", { name: t.labels.workMode })).toHaveFocus();
+    await user.click(submitButton());
+
+    expect(textbox(t.contact.labels.email)).toHaveFocus();
+    expect(createApplication).not.toHaveBeenCalled();
+
+    await user.click(
+      screen.getByRole("button", { name: p.leaveEmptyLabel(t.contact.labels.email) }),
+    );
+    expect(screen.queryByText(p.unresolved)).not.toBeInTheDocument();
+    await user.click(submitButton());
+
+    await vi.waitFor(() => expect(createApplication).toHaveBeenCalledOnce());
+    expect(createApplication.mock.calls[0]?.[0]).toMatchObject({
+      companyName: "Initech",
+      workMode: null,
+      contact: { email: null },
+    });
+  });
+
+  it("leaves a salary amount empty by its row", async () => {
+    const { createApplication, user } = renderForm();
+
+    await pasteJson(user, {
+      companyName: "Initech",
+      positionTitle: "Engineer",
+      salary: { advertised: { min: "plenty", max: "lots" }, asked: { min: 1 } },
+    });
+    await user.click(submitButton());
+
+    expect(textbox(t.salary.amounts.advertised.from)).toHaveFocus();
+    await user.click(
+      screen.getByRole("button", { name: p.leaveEmptyLabel(t.salary.rows.advertised) }),
+    );
+    expect(textbox(t.salary.amounts.advertised.to)).toBeValid();
+    await user.click(submitButton());
+
+    await vi.waitFor(() => expect(createApplication).toHaveBeenCalledOnce());
+    expect(createApplication.mock.calls[0]?.[0].salary).toMatchObject({
+      advertised: { min: null, max: null },
+      asked: { min: 1, max: null },
+    });
+  });
+
+  it("shows a rejected amount beside its row and the date that could be either day", async () => {
+    const { user } = renderForm();
+
+    await pasteJson(user, {
+      appliedAt: "09/01/2026",
+      salary: { advertised: { min: "plenty" } },
+    });
+
+    expect(screen.getByLabelText(t.labels.appliedAt)).toHaveValue("");
+    expect(screen.getByLabelText(t.labels.appliedAt)).toHaveAccessibleDescription(
+      expect.stringContaining(p.rejectedValue("“09/01/2026”")),
+    );
+    expect(textbox(t.salary.amounts.advertised.from)).toHaveAccessibleDescription(
+      expect.stringContaining(p.rejectedValue("“plenty”")),
+    );
+  });
+
+  it("starts from a new form, so what was typed before gives way", async () => {
+    const { user } = renderForm();
+
+    await user.type(textbox(t.labels.notes), "Typed by hand");
+    await pasteJson(user, { companyName: "Initech" });
+
+    expect(textbox(t.labels.companyName)).toHaveValue("Initech");
+    expect(textbox(t.labels.notes)).toHaveValue("");
+  });
+
+  it("lists the keys the format does not know", async () => {
+    const { user } = renderForm();
+
+    await pasteJson(user, { companyName: "Initech", employmentType: "Full-time" });
+
+    expect(screen.getByRole("status")).toHaveTextContent(p.unknownKeys(["employmentType"]));
+    expect(textbox(t.labels.companyName)).toHaveValue("Initech");
+  });
+
+  it("says why text that is not one object fills nothing", async () => {
+    const { user } = renderForm();
+
+    await pasteJson(user, '{ "companyName": "Initech",');
+
+    expect(textbox(p.label)).toBeInvalid();
+    expect(textbox(p.label)).toHaveAccessibleDescription(
+      expect.stringContaining(p.failure.malformed),
+    );
+    expect(textbox(t.labels.companyName)).toHaveValue("");
+  });
+
+  it("links to the format", async () => {
+    const { user } = renderForm();
+
+    await user.click(screen.getByText(p.title));
+
+    expect(screen.getByRole("link", { name: p.format })).toHaveAttribute("href", jsonFormatHref);
+  });
+
+  it("is not offered when editing", () => {
+    renderForm(undefined, anApplication());
+
+    expect(screen.queryByText(p.title)).not.toBeInTheDocument();
   });
 });

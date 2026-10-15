@@ -53,7 +53,7 @@ function statusTag(page: Page, status: ApplicationStatus, company: string, posit
   });
 }
 
-test("an application created through the form is listed, edited on its page, and survives reloads", async ({
+test("an application created through the form or from pasted JSON is listed, edited on its page, and survives reloads", async ({
   page,
 }) => {
   await page.goto(routes.applications);
@@ -125,6 +125,41 @@ test("an application created through the form is listed, edited on its page, and
   // A source once used is suggested from then on.
   await source.fill("stammtisch");
   await expect(page.getByRole("option", { name: "Berliner Tech-Stammtisch" })).toBeVisible();
+
+  // Filled in from pasted JSON, then saved through the same form.
+  await page.goto(routes.newApplication);
+  await page.getByText(t.form.paste.title).click();
+  await page.getByRole("textbox", { name: t.form.paste.label }).fill(
+    JSON.stringify({
+      companyName: "Globex",
+      positionTitle: "Backend Developer",
+      status: "Interview",
+      appliedAt: "2026-09-01",
+      city: "Hamburg",
+      workMode: "remote",
+      salary: { advertised: { min: 55000, max: 65000 } },
+    }),
+  );
+  await page.getByRole("button", { name: t.form.paste.apply }).click();
+  await expect(page.getByRole("status")).toHaveText(t.form.paste.filled);
+  await expect(page.getByRole("textbox", { name: t.form.labels.companyName })).toHaveValue(
+    "Globex",
+  );
+  await expect(page.getByRole("combobox", { name: t.form.labels.status })).toHaveValue("interview");
+  await expect(page.getByLabel(t.form.labels.appliedAt)).toHaveValue("2026-09-01");
+  await expect(page.getByRole("combobox", { name: t.form.labels.city })).toHaveValue("Hamburg");
+  await expect(
+    page.getByRole("textbox", { name: t.form.salary.amounts.advertised.to }),
+  ).toHaveValue("65000");
+  await page.getByRole("button", { name: t.form.submit }).click();
+
+  await expect(page).toHaveURL(isAt(routes.applications));
+  await page.reload();
+  const pastedRow = rowOf(page, "Globex");
+  await expect(pastedRow).toContainText("Backend Developer");
+  await expect(pastedRow).toContainText("Hamburg");
+  await expect(pastedRow).toContainText(appliedOn);
+  await expect(statusTag(page, "interview", "Globex", "Backend Developer")).toBeVisible();
 });
 
 test("a status changed from the list is dated by the server and lands in the history", async ({

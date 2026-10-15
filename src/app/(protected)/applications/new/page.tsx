@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { citySearch, routes, sourceSearch } from "@/app/routes";
+import { applicationJsonFormatUrl, citySearch, routes, sourceSearch } from "@/app/routes";
 import { ApplicationForm } from "@/ui/applications/ApplicationForm";
 import { messages } from "@/ui/messages";
 import { ColumnWidth, PageColumn } from "@/ui/shell/PageColumn";
@@ -21,6 +21,7 @@ export default function NewApplicationPage() {
         backHref={routes.applications}
         citySearch={citySearch}
         sourceSearch={sourceSearch}
+        jsonFormatHref={applicationJsonFormatUrl}
       />
     </PageColumn>
   );
