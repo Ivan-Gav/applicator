@@ -5,6 +5,7 @@ import { formatDay, isoDay } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { TableCell, TableRow } from "@/ui/kit/table";
 import { messages } from "@/ui/messages";
+import { aboveRowLinkClass, stretchedRowLinkClass } from "@/ui/row-link";
 import { type ApplicationActionHandlers, ApplicationActions } from "./ApplicationActions";
 import { type ChangeStatus, StatusTag } from "./StatusTag";
 import { WaitingDays } from "./WaitingDays";
@@ -24,8 +25,6 @@ export type ApplicationRowProps = {
 
 const t = messages.applications;
 const secondLine = "block text-[13px] text-muted-foreground";
-// Lifts a control above the link stretched over the row.
-const aboveRowLink = "relative z-10";
 
 export function ApplicationRow({ application, href, timeZone, now, actions }: ApplicationRowProps) {
   const workMode = application.workMode && t.workMode[application.workMode];
@@ -46,11 +45,7 @@ export function ApplicationRow({ application, href, timeZone, now, actions }: Ap
       </TableCell>
       <TableCell className="min-w-65 whitespace-normal">
         {/* The one link of the row; its ::after covers the whole row. */}
-        <Link
-          href={href}
-          aria-label={t.name(application)}
-          className="block outline-none after:absolute after:inset-0 focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-ring"
-        >
+        <Link href={href} aria-label={t.name(application)} className={stretchedRowLinkClass}>
           <span
             className={cn(
               "block font-semibold",
@@ -67,7 +62,7 @@ export function ApplicationRow({ application, href, timeZone, now, actions }: Ap
         {workMode && <span className={secondLine}>{workMode}</span>}
       </TableCell>
       <TableCell>
-        <div className={cn(aboveRowLink, "w-fit")}>
+        <div className={cn(aboveRowLinkClass, "w-fit")}>
           <StatusTag application={application} changeStatus={actions.changeStatus} />
         </div>
       </TableCell>
@@ -75,8 +70,15 @@ export function ApplicationRow({ application, href, timeZone, now, actions }: Ap
         <WaitingDays days={daysWithoutResponse(application, now)} />
       </TableCell>
       <TableCell>
-        <div className={aboveRowLink}>
-          <ApplicationActions application={application} actions={actions} />
+        <div className={aboveRowLinkClass}>
+          <ApplicationActions
+            application={{
+              id: application.id,
+              name: t.name(application),
+              archived: application.archivedAt !== null,
+            }}
+            actions={actions}
+          />
         </div>
       </TableCell>
     </TableRow>

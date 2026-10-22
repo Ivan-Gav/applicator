@@ -1,0 +1,64 @@
+/* A tag with its top-left and bottom-right corners clipped, as the status and
+   document type tags are. Colours come from --tag-bg, --tag-fg, --tag-border
+   and --tag-border-width, set by the tag that composes it. */
+
+/* The shape, shared by the tag and its colour square. */
+.tag,
+.swatch {
+  /* Drawn inside, so a border never changes the size. clip-path also cuts it
+     at the two clipped corners; the two gradients redraw it along each
+     diagonal, in the same colour and width. */
+  box-shadow: inset 0 0 0 var(--tag-border-width) var(--tag-border);
+  background:
+    linear-gradient(
+      135deg,
+      transparent 50%,
+      var(--tag-border) 50% calc(50% + var(--tag-border-width)),
+      transparent 0
+    )
+    0 0 / var(--corner) var(--corner) no-repeat border-box,
+    linear-gradient(
+      -45deg,
+      transparent 50%,
+      var(--tag-border) 50% calc(50% + var(--tag-border-width)),
+      transparent 0
+    )
+    100% 100% / var(--corner) var(--corner) no-repeat border-box,
+    var(--tag-bg);
+  clip-path: polygon(
+    var(--corner) 0,
+    100% 0,
+    100% calc(100% - var(--corner)),
+    calc(100% - var(--corner)) 100%,
+    0 100%,
+    0 var(--corner)
+  );
+}
+
+.tag {
+  --corner: 5px;
+  --tag-border-width: 1px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 108px;
+  padding: 6px 9px;
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--tag-fg);
+}
+
+/* A colour square standing for a tag, e.g. in a menu or a filter chip. */
+.swatch {
+  --corner: 2px;
+  --tag-border-width: 1px;
+
+  display: inline-block;
+  flex-shrink: 0;
+  width: 9px;
+  height: 9px;
+}

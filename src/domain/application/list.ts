@@ -1,5 +1,6 @@
 import { alternateNameMatches, type CityIndex } from "@/domain/city/search";
 import { normalizeForSearch } from "@/lib/normalize-for-search";
+import { SortDirection } from "@/lib/sort-direction";
 import { type Application, type ApplicationStatus, applicationStatuses } from "./model";
 import { daysWithoutResponse } from "./rules";
 
@@ -13,11 +14,7 @@ export const ApplicationSort = {
 } as const;
 export type ApplicationSort = (typeof ApplicationSort)[keyof typeof ApplicationSort];
 
-export const SortDirection = {
-  Ascending: "asc",
-  Descending: "desc",
-} as const;
-export type SortDirection = (typeof SortDirection)[keyof typeof SortDirection];
+export { SortDirection } from "@/lib/sort-direction";
 
 /** Days without a response from which an application counts as waiting long. */
 export const longWaitDays = 40;

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { cleanSource } from "@/domain/source/rules";
+import { blankToNull } from "@/lib/blank-to-null";
 import {
   applicationStatuses,
   channels,
@@ -8,10 +9,6 @@ import {
   seniorities,
   workModes,
 } from "./model";
-
-// Form fields arrive as "" when left blank; the domain stores absence as null.
-const blankToNull = (value: unknown) =>
-  typeof value === "string" && value.trim() === "" ? null : value;
 
 const optionalText = z.preprocess(blankToNull, z.string().trim().min(1).nullable());
 const optionalUrl = z.preprocess(blankToNull, z.url({ protocol: /^https?$/ }).nullable());

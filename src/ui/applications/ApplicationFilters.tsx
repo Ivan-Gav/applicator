@@ -3,10 +3,17 @@
 import Link from "next/link";
 import { ChevronDownIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { type ReactNode, useTransition } from "react";
+import { useTransition } from "react";
 import { longWaitDays } from "@/domain/application/list";
 import type { ApplicationStatus } from "@/domain/application/model";
 import { cn } from "@/lib/utils";
+import {
+  FilterChip,
+  type FilterToggle,
+  filterChipClass,
+  filterChipOffClass,
+  filterChipOnClass,
+} from "@/ui/FilterChip";
 import { awaitingHydrationClass, useHydrated } from "@/ui/hooks/use-hydrated";
 import {
   DropdownMenu,
@@ -16,14 +23,6 @@ import {
 } from "@/ui/kit/dropdown-menu";
 import { messages } from "@/ui/messages";
 import { StatusSwatch } from "./StatusSwatch";
-
-/** A filter that is on or off; `href` is the list with it switched the other way. */
-export type FilterToggle = {
-  on: boolean;
-  href: string;
-  /** Applications of the whole view it would let through. */
-  count: number;
-};
 
 export type StatusFilter = FilterToggle & {
   status: ApplicationStatus;
@@ -45,10 +44,6 @@ export type ApplicationFiltersProps = {
 };
 
 const t = messages.applications;
-const chip =
-  "inline-flex h-7.5 items-center gap-1.75 rounded-full border px-2.75 text-[13px] outline-none focus-visible:ring-3 focus-visible:ring-ring/50";
-const chipOn = "border-foreground bg-foreground text-chip-on-fg";
-const chipOff = "border-border text-foreground hover:border-input";
 
 export function ApplicationFilters({
   statuses,
@@ -59,15 +54,15 @@ export function ApplicationFilters({
   return (
     <div role="group" aria-label={t.filters.label} className="flex flex-wrap items-center gap-2">
       {statuses.map(({ status, count, on, href }) => (
-        <Chip key={status} on={on} href={href} count={count}>
+        <FilterChip key={status} on={on} href={href} count={count}>
           <StatusSwatch status={status} />
           {t.status[status]}
-        </Chip>
+        </FilterChip>
       ))}
       {waitingLong && (
         <>
           <span aria-hidden className="mx-1 h-5 w-px bg-border" />
-          <Chip {...waitingLong}>{t.filters.waitingLong(longWaitDays)}</Chip>
+          <FilterChip {...waitingLong}>{t.filters.waitingLong(longWaitDays)}</FilterChip>
         </>
       )}
       {cities && (
@@ -103,8 +98,8 @@ function CityMenu({ cities }: { cities: readonly CityFilter[] }) {
         <button
           type="button"
           className={cn(
-            chip,
-            chosen.length > 0 ? chipOn : chipOff,
+            filterChipClass,
+            chosen.length > 0 ? filterChipOnClass : filterChipOffClass,
             !hydrated && awaitingHydrationClass,
           )}
         >
@@ -128,27 +123,5 @@ function CityMenu({ cities }: { cities: readonly CityFilter[] }) {
         ))}
       </DropdownMenuContent>
     </DropdownMenu>
-  );
-}
-
-function Chip({ on, href, count, children }: FilterToggle & { children: ReactNode }) {
-  const router = useRouter();
-  const hydrated = useHydrated();
-
-  return (
-    <button
-      type="button"
-      aria-pressed={on}
-      disabled={!hydrated}
-      onClick={() => router.push(href, { scroll: false })}
-      className={cn(chip, on ? chipOn : chipOff, !hydrated && awaitingHydrationClass)}
-    >
-      {children}{" "}
-      <span
-        className={cn("font-mono text-xs", on ? "text-chip-on-count" : "text-muted-foreground")}
-      >
-        {count}
-      </span>
-    </button>
   );
 }

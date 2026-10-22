@@ -1,0 +1,69 @@
+/* Type colours come from the --doctype-* tokens in globals.css. */
+
+.tag {
+  composes: tag from "../clipped-tag.module.css";
+  justify-content: flex-start;
+  font-weight: 600;
+}
+
+.swatch {
+  composes: swatch from "../clipped-tag.module.css";
+}
+
+/* A fill only, with no border; [data-type] outranks the shape's own values. */
+.tag[data-type],
+.swatch[data-type] {
+  --tag-border-width: 0px;
+  --tag-border: transparent;
+}
+
+.tag[data-type="cv"] {
+  --tag-bg: var(--doctype-cv-bg);
+  --tag-fg: var(--doctype-cv-fg);
+}
+.tag[data-type="cover_letter"] {
+  --tag-bg: var(--doctype-cover-letter-bg);
+  --tag-fg: var(--doctype-cover-letter-fg);
+}
+.tag[data-type="certificate"] {
+  --tag-bg: var(--doctype-certificate-bg);
+  --tag-fg: var(--doctype-certificate-fg);
+}
+.tag[data-type="diploma"] {
+  --tag-bg: var(--doctype-diploma-bg);
+  --tag-fg: var(--doctype-diploma-fg);
+}
+.tag[data-type="reference"] {
+  --tag-bg: var(--doctype-reference-bg);
+  --tag-fg: var(--doctype-reference-fg);
+}
+.tag[data-type="portfolio"] {
+  --tag-bg: var(--doctype-portfolio-bg);
+  --tag-fg: var(--doctype-portfolio-fg);
+}
+.tag[data-type="other"] {
+  --tag-bg: var(--doctype-other-bg);
+  --tag-fg: var(--doctype-other-fg);
+}
+
+.swatch[data-type="cv"] {
+  --tag-bg: var(--doctype-cv-dot);
+}
+.swatch[data-type="cover_letter"] {
+  --tag-bg: var(--doctype-cover-letter-dot);
+}
+.swatch[data-type="certificate"] {
+  --tag-bg: var(--doctype-certificate-dot);
+}
+.swatch[data-type="diploma"] {
+  --tag-bg: var(--doctype-diploma-dot);
+}
+.swatch[data-type="reference"] {
+  --tag-bg: var(--doctype-reference-dot);
+}
+.swatch[data-type="portfolio"] {
+  --tag-bg: var(--doctype-portfolio-dot);
+}
+.swatch[data-type="other"] {
+  --tag-bg: var(--doctype-other-dot);
+}

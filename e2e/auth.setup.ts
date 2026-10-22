@@ -4,6 +4,8 @@ import {
   applicationsStateFile,
   applicationsUser,
   authStateFile,
+  documentsStateFile,
+  documentsUser,
   sharedUser,
   signInWithMagicLink,
 } from "./support/auth";
@@ -11,6 +13,7 @@ import {
 for (const { user, stateFile } of [
   { user: sharedUser, stateFile: authStateFile },
   { user: applicationsUser, stateFile: applicationsStateFile },
+  { user: documentsUser, stateFile: documentsStateFile },
 ]) {
   setup(`sign ${user.email} in`, async ({ page }) => {
     await signInWithMagicLink(page, user.email);

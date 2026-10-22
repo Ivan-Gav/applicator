@@ -1,23 +1,18 @@
 import Link from "next/link";
-import { ApplicationSort, SortDirection } from "@/domain/application/list";
+import { ApplicationSort } from "@/domain/application/list";
 import type { Application } from "@/domain/application/model";
 import { cn } from "@/lib/utils";
 import { Button } from "@/ui/kit/button";
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/ui/kit/table";
+import { SortableHead, type SortLink } from "@/ui/SortableHead";
 import { messages } from "@/ui/messages";
 import { ApplicationFilters, type ApplicationFiltersProps } from "./ApplicationFilters";
 import { ApplicationRow, type ApplicationRowActions } from "./ApplicationRow";
-import { ApplicationSearch, type ApplicationSearchProps } from "./ApplicationSearch";
-
-/** A column header's link; `direction` is set on the column the list is ordered by. */
-export type SortLink = {
-  href: string;
-  direction: SortDirection | null;
-};
+import { ListSearch, type ListSearchQuery } from "@/ui/ListSearch";
 
 /** Search, filters and counts; absent while the view holds no application at all. */
 export type ApplicationListControls = {
-  search: ApplicationSearchProps;
+  search: ListSearchQuery;
   filters: ApplicationFiltersProps;
   /** Applications in the view. */
   total: number;
@@ -100,7 +95,11 @@ export function ApplicationList({
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-3">
             <div className="w-full max-w-115">
-              <ApplicationSearch {...controls.search} />
+              <ListSearch
+                {...controls.search}
+                label={t.search.label}
+                placeholder={t.search.placeholder}
+              />
             </div>
             <p className="text-[13px] text-muted-foreground" aria-live="polite">
               {controls.filtered
@@ -177,44 +176,5 @@ export function ApplicationList({
         </Button>
       )}
     </div>
-  );
-}
-
-const ariaSort = {
-  [SortDirection.Ascending]: "ascending",
-  [SortDirection.Descending]: "descending",
-} as const satisfies Record<SortDirection, string>;
-
-function SortableHead({
-  label,
-  link,
-  className,
-}: {
-  label: string;
-  link: SortLink;
-  className?: string;
-}) {
-  return (
-    <TableHead
-      scope="col"
-      aria-sort={link.direction ? ariaSort[link.direction] : undefined}
-      className={className}
-    >
-      {/* A click on the ordered column reverses it; on another, orders by that one. */}
-      <Link
-        href={link.href}
-        scroll={false}
-        className={cn(
-          "inline-flex h-10 items-center gap-1.5 rounded-xs px-2 text-[13px] font-medium hover:text-foreground hover:no-underline",
-          link.direction ? "text-foreground" : "text-muted-foreground",
-        )}
-      >
-        {label}
-        {/* Holds its place on every column, so the label does not shift when the order moves. */}
-        <span aria-hidden className="w-2.5 text-[10px]">
-          {link.direction && t.sortIndicator[link.direction]}
-        </span>
-      </Link>
-    </TableHead>
   );
 }

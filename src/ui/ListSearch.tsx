@@ -4,9 +4,9 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useId, useRef, useState } from "react";
 import { SearchIcon } from "@/ui/icons/SearchIcon";
 import { Input } from "@/ui/kit/input";
-import { messages } from "@/ui/messages";
 
-export type ApplicationSearchProps = {
+/** Where a list searches, and what it searches for now. */
+export type ListSearchQuery = {
   /** The list's path; the search is a GET request to it. */
   action: string;
   /** The search parameter's name. */
@@ -17,19 +17,26 @@ export type ApplicationSearchProps = {
   hiddenFields: ReadonlyArray<readonly [string, string]>;
 };
 
-const t = messages.applications.search;
+export type ListSearchProps = ListSearchQuery & {
+  /** The field's accessible name. */
+  label: string;
+  placeholder: string;
+};
+
 const typingPause = 300;
 
 /**
- * Searches as one types, after a pause, or at once on Enter. Without script it
- * is a plain GET form.
+ * Searches a list as one types, after a pause, or at once on Enter. Without
+ * script it is a plain GET form.
  */
-export function ApplicationSearch({
+export function ListSearch({
   action,
   name,
   value: search,
   hiddenFields,
-}: ApplicationSearchProps) {
+  label,
+  placeholder,
+}: ListSearchProps) {
   const router = useRouter();
   const id = useId();
   const form = useRef<HTMLFormElement>(null);
@@ -66,7 +73,7 @@ export function ApplicationSearch({
   return (
     <form ref={form} role="search" action={action} method="get" onSubmit={submit}>
       <label htmlFor={id} className="sr-only">
-        {t.label}
+        {label}
       </label>
       <div className="relative">
         <SearchIcon className="pointer-events-none absolute top-1/2 left-2.75 size-3.75 -translate-y-1/2 text-muted-foreground" />
@@ -76,7 +83,7 @@ export function ApplicationSearch({
           // A blank search stays out of the URL.
           name={blank ? undefined : name}
           value={value}
-          placeholder={t.placeholder}
+          placeholder={placeholder}
           autoComplete="off"
           className="h-9 rounded-[3px] bg-card pr-3 pl-8.5 text-sm md:text-sm dark:bg-card"
           onChange={(event) => {

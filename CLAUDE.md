@@ -51,7 +51,8 @@ src/
       client.ts
       application.repository.ts
       application.mapper.ts
-      storage.ts
+      document.storage.ts  implements the domain's DocumentStorage
+      maintenance.ts       service role; for scripts/maintenance.mts only
 
   app/                     Next.js routing, route handlers, server actions
     auth/_utils/           non-route code of a segment: a private folder (`_`),
@@ -134,8 +135,9 @@ redirects), and a port would be ceremony without benefit. Do not "fix" this.
 `src/adapters/supabase/auth.ts` is the whole surface.
 
 The service role key is read only by `src/adapters/supabase/service-role.client.ts`,
-which only `e2e/` may import (ESLint `no-restricted-imports`). It bypasses RLS and
-must never serve a user request.
+which only `e2e/` and `src/adapters/supabase/maintenance.ts` import; only
+`scripts/` may import `maintenance.ts` (ESLint `no-restricted-imports`). It
+bypasses RLS and must never serve a user request or ship in the deployed app.
 
 ### Deliberately denormalised
 
@@ -143,6 +145,31 @@ Company, source and contact are plain text columns on `application`, not
 tables. Recurrence is real but rare; autocomplete over distinct existing values
 (`ApplicationRepository.distinctValues`) covers it without lookup UI, duplicate
 merging or joins on every read. Do not reintroduce lookup tables for them.
+
+### Documents and their files
+
+A `document` is an identity (type, title, language); a `document_version`
+is one file, whose file type is its `format`. **Versions are immutable**: no
+update policy on the table or on the storage objects, no "replace file"
+action, and no deleting a single version. A revision is a new version, and
+the newest version is always the current one. Applications will link to a
+version, not a document.
+
+Files go through the `DocumentStorage` port (`src/domain/document/storage.ts`).
+The database stores an opaque key (`<user id>/<random id>`, never the uploaded
+name, never a URL). The browser fetches a file only through
+`/api/document-files/[versionId]`, which checks the user and then does what the
+adapter delivers: to save, a redirect to a 60-second signed link that names the
+file; to open (`?open`, formats with `opensInBrowser`), the bytes, served
+inline under the original name with `nosniff`. Storage
+policies on `storage.objects` are separate from table RLS and are tested in
+pgTAP like it.
+
+Upload stores the file, then the row; deletion deletes the row, then the file,
+retrying the file once. A file left behind by a failed storage call, or by a
+user deleted outside the script, is cleared by hand with
+`npm run maintenance` (README). There is deliberately no scheduled sweep and
+no cron route; do not add one.
 
 ### Cities
 

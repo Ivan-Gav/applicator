@@ -11,6 +11,12 @@ import {
 } from "@/domain/application/model";
 import { JsonReadFailure } from "@/domain/application/json";
 import type { SortDirection } from "@/domain/application/list";
+import type { DocumentFormat } from "@/domain/document/format";
+import {
+  type DocumentLanguage,
+  type DocumentType,
+  DocumentUploadFailure,
+} from "@/domain/document/model";
 import { SignInFailureReason } from "@/domain/user/model";
 import type { ApplicationFormField } from "./applications/application-form-fields";
 
@@ -32,6 +38,7 @@ export const messages = {
   nav: {
     label: "Main",
     applications: "Applications",
+    documents: "Documents",
     signOut: "Sign out",
     darkTheme: "Dark theme",
   },
@@ -53,6 +60,14 @@ export const messages = {
     authUnavailableDescription:
       "Your sign-in could not be checked because the service is temporarily unavailable. You are still signed in; try again in a moment.",
     retry: "Try again",
+  },
+
+  // Shared by the lists: applications and documents.
+  list: {
+    sortIndicator: {
+      asc: "▲",
+      desc: "▼",
+    } satisfies Record<SortDirection, string>,
   },
 
   applications: {
@@ -108,10 +123,6 @@ export const messages = {
         chosen.length === 0 ? "City" : `City: ${chosen.length === 1 ? chosen[0] : chosen.length}`,
       clear: "Clear filters",
     },
-    sortIndicator: {
-      asc: "▲",
-      desc: "▼",
-    } satisfies Record<SortDirection, string>,
     emptyArchived: {
       title: "No archived applications",
       description:
@@ -365,6 +376,148 @@ export const messages = {
       rejected: "Rejected",
       withdrawn: "Withdrawn",
     } satisfies Record<ApplicationStatus, string>,
+  },
+
+  documents: {
+    title: "Documents",
+    upload: "Upload document",
+    empty: {
+      title: "No documents yet",
+      description: "Upload a CV, cover letter or certificate and it will show up here.",
+    },
+    type: {
+      cv: "CV",
+      cover_letter: "Cover letter",
+      certificate: "Certificate",
+      diploma: "Diploma",
+      reference: "Reference",
+      portfolio: "Portfolio",
+      other: "Other",
+    } satisfies Record<DocumentType, string>,
+    language: {
+      en: "English",
+      de: "German",
+      ru: "Russian",
+    } satisfies Record<DocumentLanguage, string>,
+    languageUnset: "Not specified",
+    format: {
+      pdf: "PDF",
+      doc: "DOC",
+      docx: "DOCX",
+      odt: "ODT",
+      rtf: "RTF",
+      txt: "TXT",
+      png: "PNG",
+      jpeg: "JPEG",
+      webp: "WebP",
+    } satisfies Record<DocumentFormat, string>,
+    // "PDF, 240.5 kB"
+    fileSummary: (format: string, size: string) => `${format}, ${size}`,
+    columns: {
+      document: "Document",
+      type: "Type",
+      language: "Language",
+      version: "Version",
+      uploaded: "Uploaded",
+      actions: "Actions",
+    },
+    // How many the list holds, and how many the search and filters let through.
+    count: (total: number) => (total === 1 ? "1 document" : `${total} documents`),
+    countFiltered: (matching: number, total: number) => `${matching} of ${total} shown`,
+    search: {
+      label: "Search documents",
+      placeholder: "Search titles, file names and versions",
+    },
+    // The row's link, which opens the chosen version's file; the version only when there are versions.
+    open: (title: string, version: string | null) =>
+      version === null
+        ? `Open ${title} (opens in a new tab)`
+        : `Open ${title}, version ${version} (opens in a new tab)`,
+    filters: {
+      label: "Filter",
+      types: "Type",
+      languages: "Language",
+      clear: "Clear filters",
+    },
+    nothingMatches: {
+      title: "Nothing matches",
+      description: "Try another word, or clear the filters.",
+    },
+    showMore: "Show more",
+    versions: {
+      // The version select's accessible name.
+      select: (title: string) => `Version of ${title}`,
+      // A version without a label: the first upload, then by its place counting from it.
+      original: "Original",
+      numbered: (number: number) => `Version ${number}`,
+    },
+    actions: {
+      // The accessible name of an action: the visible label, then what it acts on.
+      label: (action: string, name: string) => `${action}: ${name}`,
+      download: "Download",
+      addVersion: "Add version",
+      rename: "Rename",
+      delete: "Delete",
+      failed: "That did not work. Try again in a moment.",
+    },
+    form: {
+      file: "File",
+      chooseFile: "Choose file",
+      fileHint: (maxSize: string) =>
+        `PDF, Word (DOC, DOCX), OpenDocument text, RTF, plain text, or an image (PNG, JPEG, WebP), up to ${maxSize}.`,
+      type: "Type",
+      title: "Title",
+      language: "Language",
+      label: "Version label",
+      labelHint: "Optional. What sets this file apart, such as “backend-heavy” or “short”.",
+      errors: {
+        fileMissing: "Choose a file.",
+        title: "Enter a title, up to 200 characters.",
+      },
+      cancel: "Cancel",
+      submit: "Upload",
+      submitting: "Uploading…",
+      failure: {
+        [DocumentUploadFailure.Invalid]:
+          "The upload could not be read. Check the fields and try again.",
+        [DocumentUploadFailure.Empty]: "This file is empty. Choose another one.",
+        [DocumentUploadFailure.TooLarge]:
+          "This file is larger than the limit given above. Choose a smaller one.",
+        [DocumentUploadFailure.UnsupportedType]:
+          "Files of this type are not accepted. Choose a PDF, a Word, OpenDocument, RTF or text file, or an image.",
+        [DocumentUploadFailure.ContentMismatch]:
+          "This file’s content does not match its extension. Save it again in its own format, then upload it.",
+        [DocumentUploadFailure.Missing]: "This document no longer exists. Reload the page.",
+      } satisfies Record<DocumentUploadFailure, string>,
+      failed: "The file could not be uploaded. Try again in a moment.",
+    },
+    uploadDialog: {
+      title: "Upload document",
+      description: "A document is one CV, letter or certificate. Its first version is this file.",
+    },
+    versionDialog: {
+      title: (name: string) => `New version of “${name}”`,
+      description:
+        "The new file becomes the current version. The earlier ones stay as they are and can still be downloaded.",
+    },
+    renameDialog: {
+      title: "Rename document",
+      submit: "Save",
+      saving: "Saving…",
+      cancel: "Cancel",
+      rejected: "Enter a title, up to 200 characters.",
+    },
+    deleteDialog: {
+      title: "Delete this document?",
+      // `versions` is null for a document without versions to tell apart.
+      description: (name: string, versions: number | null) =>
+        versions === null
+          ? `“${name}” will be deleted permanently. This cannot be undone.`
+          : `“${name}” and its ${versions === 1 ? "version" : `${versions} versions`} will be deleted permanently. This cannot be undone.`,
+      confirm: "Delete permanently",
+      deleting: "Deleting…",
+      cancel: "Cancel",
+    },
   },
 
   signIn: {

@@ -5,14 +5,18 @@ import {
   ApplicationsView,
   applicationPath,
   applicationsPath,
+  documentsPath,
   routes,
   signInPath,
 } from "@/app/routes";
 import { ApplicationSort, defaultListQuery, SortDirection } from "@/domain/application/list";
+import { defaultDocumentListQuery } from "@/domain/document/list";
+import { documentTypes } from "@/domain/document/model";
 import { SignInFailureReason } from "@/domain/user/model";
 import { messages } from "@/ui/messages";
 import { removeApplicationsById, seedApplication as seedFor } from "./support/applications";
 import { authStateFile } from "./support/auth";
+import { removeDocumentsById, seedDocument } from "./support/documents";
 
 const publicPages = [
   { name: "home page", path: routes.home },
@@ -232,6 +236,52 @@ test.describe("with a stored session", () => {
     await expect(page.getByRole("alertdialog", { name: t.deleteDialog.title })).toBeVisible();
 
     await expectNoViolations(page);
+  });
+
+  test.describe("documents", () => {
+    let seededDocuments: string[] = [];
+
+    test.afterEach(async () => {
+      await removeDocumentsById(seededDocuments);
+      seededDocuments = [];
+    });
+
+    // Every type tag, and a version select, which a document shows from its second file on.
+    for (const colorScheme of ["light", "dark"] as const) {
+      test(`documents table in the ${colorScheme} theme has no accessibility violations`, async ({
+        browser,
+      }) => {
+        const context = await browser.newContext({ storageState: authStateFile, colorScheme });
+        const page = await context.newPage();
+        const prefix = uniqueCompany("Axe");
+        for (const type of documentTypes) {
+          seededDocuments.push(
+            await seedDocument(page.request, {
+              title: `${prefix} ${type}`,
+              type,
+              versions: type === "cv" ? 2 : 1,
+            }),
+          );
+        }
+        await page.goto(documentsPath({ ...defaultDocumentListQuery, search: prefix }));
+        await expect(
+          page.getByRole("combobox", { name: messages.documents.versions.select(`${prefix} cv`) }),
+        ).toBeVisible();
+
+        await expectNoViolations(page);
+        await context.close();
+      });
+    }
+
+    test("upload dialog showing errors has no accessibility violations", async ({ page }) => {
+      await page.goto(routes.documents);
+      await page.getByRole("button", { name: messages.documents.upload }).click();
+      const dialog = page.getByRole("dialog", { name: messages.documents.uploadDialog.title });
+      await dialog.getByRole("button", { name: messages.documents.form.submit }).click();
+      await expect(dialog.getByText(messages.documents.form.errors.fileMissing)).toBeVisible();
+
+      await expectNoViolations(page);
+    });
   });
 
   // With the salary and contact sections open, as stored values open them.

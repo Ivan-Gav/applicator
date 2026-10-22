@@ -15,7 +15,8 @@ import {
 } from "@/domain/application/list";
 import { type ApplicationStatus, applicationStatuses } from "@/domain/application/model";
 import { normalizeForSearch } from "@/lib/normalize-for-search";
-import type { ApplicationListControls, SortLink } from "@/ui/applications/ApplicationList";
+import type { ApplicationListControls } from "@/ui/applications/ApplicationList";
+import type { SortLink } from "@/ui/SortableHead";
 
 type ListState = Pick<ApplicationsListState, "view" | "query">;
 

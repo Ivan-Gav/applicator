@@ -111,77 +111,79 @@ export type Database = {
         };
         Relationships: [];
       };
-      application_document: {
-        Row: {
-          application_id: string;
-          created_at: string;
-          document_id: string;
-          user_id: string;
-        };
-        Insert: {
-          application_id: string;
-          created_at?: string;
-          document_id: string;
-          user_id: string;
-        };
-        Update: {
-          application_id?: string;
-          created_at?: string;
-          document_id?: string;
-          user_id?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "application_document_application_id_fkey";
-            columns: ["application_id"];
-            isOneToOne: false;
-            referencedRelation: "application";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "application_document_document_id_fkey";
-            columns: ["document_id"];
-            isOneToOne: false;
-            referencedRelation: "document";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
       document: {
         Row: {
           created_at: string;
           id: string;
-          kind: string;
           language: string | null;
-          storage_path: string;
           title: string;
+          type: string;
           updated_at: string;
           user_id: string;
-          version_label: string | null;
         };
         Insert: {
           created_at?: string;
           id?: string;
-          kind: string;
           language?: string | null;
-          storage_path: string;
           title: string;
+          type: string;
           updated_at?: string;
           user_id: string;
-          version_label?: string | null;
         };
         Update: {
           created_at?: string;
           id?: string;
-          kind?: string;
           language?: string | null;
-          storage_path?: string;
           title?: string;
+          type?: string;
           updated_at?: string;
           user_id?: string;
-          version_label?: string | null;
         };
         Relationships: [];
+      };
+      document_version: {
+        Row: {
+          document_id: string;
+          file_name: string;
+          id: string;
+          label: string | null;
+          media_type: string;
+          size_bytes: number;
+          storage_key: string;
+          uploaded_at: string;
+          user_id: string;
+        };
+        Insert: {
+          document_id: string;
+          file_name: string;
+          id?: string;
+          label?: string | null;
+          media_type: string;
+          size_bytes: number;
+          storage_key: string;
+          uploaded_at?: string;
+          user_id: string;
+        };
+        Update: {
+          document_id?: string;
+          file_name?: string;
+          id?: string;
+          label?: string | null;
+          media_type?: string;
+          size_bytes?: number;
+          storage_key?: string;
+          uploaded_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "document_version_document_fk";
+            columns: ["document_id", "user_id"];
+            isOneToOne: false;
+            referencedRelation: "document";
+            referencedColumns: ["id", "user_id"];
+          },
+        ];
       };
       interview: {
         Row: {
@@ -282,7 +284,24 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      create_document: {
+        Args: {
+          p_file_name: string;
+          p_label?: string;
+          p_language?: string;
+          p_media_type: string;
+          p_size_bytes: number;
+          p_storage_key: string;
+          p_title: string;
+          p_type: string;
+          p_user_id: string;
+        };
+        Returns: string;
+      };
+      delete_document: {
+        Args: { p_document_id: string; p_user_id: string };
+        Returns: string[];
+      };
     };
     Enums: {
       [_ in never]: never;

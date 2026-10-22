@@ -6,7 +6,10 @@ import { messages } from "@/ui/messages";
 import { AppFooter } from "@/ui/shell/AppFooter";
 import { AppHeader } from "@/ui/shell/AppHeader";
 
-const navItems = [{ href: routes.applications, label: messages.nav.applications }];
+const navItems = [
+  { href: routes.applications, label: messages.nav.applications },
+  { href: routes.documents, label: messages.nav.documents },
+];
 
 // Protects every page in this group. Route handlers and server actions are not
 // covered and call requireUser() themselves.

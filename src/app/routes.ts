@@ -5,6 +5,12 @@ import {
   SortDirection,
 } from "@/domain/application/list";
 import { applicationStatuses } from "@/domain/application/model";
+import {
+  type DocumentListQuery,
+  DocumentSort,
+  defaultDocumentListQuery,
+} from "@/domain/document/list";
+import { documentLanguages, documentTypes } from "@/domain/document/model";
 import type { SignInFailureReason } from "@/domain/user/model";
 import { sameSitePath } from "@/lib/same-site-path";
 
@@ -14,10 +20,108 @@ export const routes = {
   authCallback: "/auth/callback",
   applications: "/applications",
   newApplication: "/applications/new",
+  documents: "/documents",
   apiMe: "/api/me",
   apiCities: "/api/cities",
   apiSources: "/api/sources",
+  apiDocumentFiles: "/api/document-files",
 } as const;
+
+// Present on a document file's address when the browser is to show the file
+// rather than save it.
+export const documentFileOpenParam = "open";
+
+/** Where the browser saves the file of one document version. */
+export function documentFilePath(versionId: string): string {
+  return `${routes.apiDocumentFiles}/${encodeURIComponent(versionId)}`;
+}
+
+/** Where the browser shows the file of one document version, for a format it can show. */
+export function documentFileOpenPath(versionId: string): string {
+  return `${documentFilePath(versionId)}?${documentFileOpenParam}`;
+}
+
+export const documentsSearchParam = {
+  search: "q",
+  // Comma-separated, e.g. "cv,diploma".
+  type: "type",
+  // Comma-separated, e.g. "en,de".
+  language: "lang",
+  sort: "sort",
+  direction: "dir",
+  // How many documents the list shows; "Show more" raises it by a page.
+  shown: "shown",
+} as const;
+
+/** Documents the list shows at first, and adds per "Show more". */
+export const documentsPageSize = 20;
+
+/** The documents list as `query` and `shown` describe it; defaults stay out of the URL. */
+export function documentsPath(
+  query: DocumentListQuery = defaultDocumentListQuery,
+  shown: number = documentsPageSize,
+): string {
+  const p = documentsSearchParam;
+  const params = new URLSearchParams();
+  if (query.search.trim() !== "") {
+    params.set(p.search, query.search);
+  }
+  if (query.types.length > 0) {
+    params.set(p.type, query.types.join(","));
+  }
+  if (query.languages.length > 0) {
+    params.set(p.language, query.languages.join(","));
+  }
+  // The order is written whole, field and direction, or not at all.
+  if (
+    query.sort !== defaultDocumentListQuery.sort ||
+    query.direction !== defaultDocumentListQuery.direction
+  ) {
+    params.set(p.sort, query.sort);
+    params.set(p.direction, query.direction);
+  }
+  if (shown !== documentsPageSize) {
+    params.set(p.shown, String(shown));
+  }
+  const search = params.toString();
+  return search ? `${routes.documents}?${search}` : routes.documents;
+}
+
+export type DocumentsListState = {
+  query: DocumentListQuery;
+  shown: number;
+};
+
+/** What a documents list request asks for. Anything unknown or malformed falls back to the default. */
+export function documentsListStateOf(params: SearchParams): DocumentsListState {
+  const p = documentsSearchParam;
+  const value = (name: string) => {
+    const raw = params[name];
+    return Array.isArray(raw) ? raw[0] : raw;
+  };
+  const listed = (name: string) => new Set(value(name)?.split(","));
+  const types = listed(p.type);
+  const languages = listed(p.language);
+
+  return {
+    query: {
+      search: value(p.search) ?? defaultDocumentListQuery.search,
+      types: documentTypes.filter((type) => types.has(type)),
+      languages: documentLanguages.filter((language) => languages.has(language)),
+      sort: oneOf(Object.values(DocumentSort), value(p.sort)) ?? defaultDocumentListQuery.sort,
+      direction:
+        oneOf(Object.values(SortDirection), value(p.direction)) ??
+        defaultDocumentListQuery.direction,
+    },
+    shown: shownOf(value(p.shown), documentsPageSize),
+  };
+}
+
+// Digits only, so "1e3" or "2.5" are not taken for a count; never less than a page.
+function shownOf(param: string | undefined, pageSize: number): number {
+  const shown = /^\d+$/.test(param ?? "") ? Number(param) : pageSize;
+  return Number.isSafeInteger(shown) ? Math.max(shown, pageSize) : pageSize;
+}
 
 // The search `routes.apiCities` answers.
 export const citySearchParam = "q";
@@ -121,9 +225,6 @@ export function applicationsListStateOf(params: SearchParams): ApplicationsListS
   };
   const requested = new Set(value(p.status)?.split(","));
   const sort = oneOf(Object.values(ApplicationSort), value(p.sort)) ?? defaultListQuery.sort;
-  const shownParam = value(p.shown) ?? "";
-  // Digits only, so "1e3" or "2.5" are not taken for a count.
-  const shown = /^\d+$/.test(shownParam) ? Number(shownParam) : applicationsPageSize;
 
   return {
     view: applicationsViewOf(value(p.view)),
@@ -139,9 +240,7 @@ export function applicationsListStateOf(params: SearchParams): ApplicationsListS
       direction:
         oneOf(Object.values(SortDirection), value(p.direction)) ?? SortDirection.Descending,
     },
-    shown: Number.isSafeInteger(shown)
-      ? Math.max(shown, applicationsPageSize)
-      : applicationsPageSize,
+    shown: shownOf(value(p.shown), applicationsPageSize),
   };
 }
 

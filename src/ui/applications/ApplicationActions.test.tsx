@@ -11,13 +11,22 @@ const t = messages.applications;
 const d = t.deleteDialog;
 const name = t.name({ companyName: "Acme", positionTitle: "Engineer" });
 
+// What the row hands the actions about an application.
+function propsOf(application: Application) {
+  return {
+    id: application.id,
+    name: t.name(application),
+    archived: application.archivedAt !== null,
+  };
+}
+
 function renderActions(application: Application = anApplication()) {
   const actions = {
     archive: vi.fn<(id: string) => Promise<void>>(() => Promise.resolve()),
     unarchive: vi.fn<(id: string) => Promise<void>>(() => Promise.resolve()),
     delete: vi.fn<(id: string) => Promise<void>>(() => Promise.resolve()),
   };
-  render(<ApplicationActions application={application} actions={actions} />);
+  render(<ApplicationActions application={propsOf(application)} actions={actions} />);
   return { actions, user: userEvent.setup() };
 }
 
@@ -90,7 +99,7 @@ describe("before hydration", () => {
     const container = document.createElement("div");
     container.innerHTML = renderToString(
       <ApplicationActions
-        application={anApplication()}
+        application={propsOf(anApplication())}
         actions={{ archive: vi.fn(), unarchive: vi.fn(), delete: vi.fn() }}
       />,
     );

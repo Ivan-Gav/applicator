@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import type { Application } from "@/domain/application/model";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -19,6 +18,7 @@ import { DeleteIcon } from "@/ui/icons/DeleteIcon";
 import { RestoreIcon } from "@/ui/icons/RestoreIcon";
 import { Button } from "@/ui/kit/button";
 import { cn } from "@/lib/utils";
+import { destructiveIconButtonClass, iconButtonClass } from "@/ui/icon-button";
 import { messages } from "@/ui/messages";
 
 export type ApplicationActionHandlers = {
@@ -28,18 +28,16 @@ export type ApplicationActionHandlers = {
 };
 
 export type ApplicationActionsProps = {
-  application: Application;
+  /** Only what the actions use: the row is rendered on the server, and these props go to the browser. */
+  application: { id: string; name: string; archived: boolean };
   actions: ApplicationActionHandlers;
 };
 
 const t = messages.applications.actions;
 const d = messages.applications.deleteDialog;
-const iconButton =
-  "rounded-full text-muted-foreground hover:bg-muted hover:text-foreground dark:hover:bg-muted";
 
 export function ApplicationActions({ application, actions }: ApplicationActionsProps) {
-  const name = messages.applications.name(application);
-  const archived = application.archivedAt !== null;
+  const { name, archived } = application;
   const [failed, setFailed] = useState(false);
   const [archiving, startArchiving] = useTransition();
   const [deleting, startDeleting] = useTransition();
@@ -81,7 +79,7 @@ export function ApplicationActions({ application, actions }: ApplicationActionsP
             variant="ghost"
             size="icon"
             disabled={archiving || !hydrated}
-            className={cn(iconButton, !hydrated && awaitingHydrationClass)}
+            className={cn(iconButtonClass, !hydrated && awaitingHydrationClass)}
             aria-label={t.label(archiveLabel, name)}
             onClick={toggleArchived}
           >
@@ -95,11 +93,7 @@ export function ApplicationActions({ application, actions }: ApplicationActionsP
                 variant="ghost"
                 size="icon"
                 disabled={!hydrated}
-                className={cn(
-                  iconButton,
-                  "hover:text-destructive",
-                  !hydrated && awaitingHydrationClass,
-                )}
+                className={cn(destructiveIconButtonClass, !hydrated && awaitingHydrationClass)}
                 aria-label={t.label(t.delete, name)}
               >
                 <DeleteIcon className="size-5" />

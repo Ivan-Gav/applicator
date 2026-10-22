@@ -3,13 +3,15 @@ import userEvent from "@testing-library/user-event";
 import { useRouter } from "next/navigation";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { messages } from "@/ui/messages";
-import { ApplicationSearch, type ApplicationSearchProps } from "./ApplicationSearch";
+import { ListSearch, type ListSearchProps } from "./ListSearch";
 
 vi.mock("next/navigation", () => ({ useRouter: vi.fn() }));
 
 const replace = vi.fn();
 const t = messages.applications.search;
-const props: ApplicationSearchProps = {
+const props: ListSearchProps = {
+  label: t.label,
+  placeholder: t.placeholder,
   action: "/list",
   name: "q",
   value: "",
@@ -29,8 +31,8 @@ afterEach(() => {
   replace.mockReset();
 });
 
-function renderSearch(overrides: Partial<ApplicationSearchProps> = {}) {
-  const view = render(<ApplicationSearch {...props} {...overrides} />);
+function renderSearch(overrides: Partial<ListSearchProps> = {}) {
+  const view = render(<ListSearch {...props} {...overrides} />);
   return {
     view,
     field: screen.getByRole("searchbox", { name: t.label }),
@@ -38,7 +40,7 @@ function renderSearch(overrides: Partial<ApplicationSearchProps> = {}) {
   };
 }
 
-describe("ApplicationSearch", () => {
+describe("ListSearch", () => {
   it("searches once typing pauses, keeping the rest of the list's state", async () => {
     const { field, user } = renderSearch();
 
@@ -78,7 +80,7 @@ describe("ApplicationSearch", () => {
   it("takes on a search the URL got from elsewhere, such as clearing the filters", () => {
     const { view, field } = renderSearch({ value: "acme" });
 
-    view.rerender(<ApplicationSearch {...props} value="" />);
+    view.rerender(<ListSearch {...props} value="" />);
 
     expect(field).toHaveValue("");
   });
@@ -89,7 +91,7 @@ describe("ApplicationSearch", () => {
     await user.type(field, "acme");
     fireEvent.submit(screen.getByRole("search"));
     await user.type(field, " corp");
-    view.rerender(<ApplicationSearch {...props} value="acme" />);
+    view.rerender(<ListSearch {...props} value="acme" />);
 
     expect(field).toHaveValue("acme corp");
   });

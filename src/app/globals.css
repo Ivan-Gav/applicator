@@ -139,6 +139,31 @@
   --status-withdrawn-bg: transparent;
   --status-withdrawn-fg: #5f5e56;
   --status-withdrawn-border: #a09f96;
+
+  /* Document type tags: pale fill, dark text of the same hue. */
+  --doctype-cv-bg: #b5eae6;
+  --doctype-cv-fg: #004b48;
+  --doctype-cover-letter-bg: #f4dab6;
+  --doctype-cover-letter-fg: #583400;
+  --doctype-certificate-bg: #d9daff;
+  --doctype-certificate-fg: #39346a;
+  --doctype-diploma-bg: #f4d1f0;
+  --doctype-diploma-fg: #572953;
+  --doctype-reference-bg: #bee4ff;
+  --doctype-reference-fg: #004267;
+  --doctype-portfolio-bg: #cbe8c5;
+  --doctype-portfolio-fg: #204817;
+  --doctype-other-bg: #dddfdb;
+  --doctype-other-fg: #41433e;
+
+  /* Their chip squares, the same in both themes; decorative, as the label names the type. */
+  --doctype-cv-dot: #25aea7;
+  --doctype-cover-letter-dot: #c08e43;
+  --doctype-certificate-dot: #918ed9;
+  --doctype-diploma-dot: #bf7fb9;
+  --doctype-reference-dot: #51a1d5;
+  --doctype-portfolio-dot: #73a967;
+  --doctype-other-dot: #90938d;
 }
 
 .dark {
@@ -209,6 +234,22 @@
   --status-withdrawn-bg: transparent;
   --status-withdrawn-fg: #a6a59c;
   --status-withdrawn-border: #57564e;
+
+  /* Document type tags: deep fill, pale text. */
+  --doctype-cv-bg: #004340;
+  --doctype-cv-fg: #bcede9;
+  --doctype-cover-letter-bg: #4d3202;
+  --doctype-cover-letter-fg: #f5ddbd;
+  --doctype-certificate-bg: #35325a;
+  --doctype-certificate-fg: #ddddff;
+  --doctype-diploma-bg: #4c2a49;
+  --doctype-diploma-fg: #f5d6f1;
+  --doctype-reference-bg: #0b3c58;
+  --doctype-reference-fg: #c4e7ff;
+  --doctype-portfolio-bg: #23411c;
+  --doctype-portfolio-fg: #d0eacb;
+  --doctype-other-bg: #343632;
+  --doctype-other-fg: #d6d9d3;
 }
 
 @layer base {

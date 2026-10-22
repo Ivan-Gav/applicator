@@ -5,7 +5,8 @@ import { formatDay } from "@/lib/date";
 import { anApplication } from "@/test/application.fixture";
 import { messages } from "@/ui/messages";
 import { ApplicationSort, SortDirection } from "@/domain/application/list";
-import { type ApplicationListControls, ApplicationList, type SortLink } from "./ApplicationList";
+import type { SortLink } from "@/ui/SortableHead";
+import { type ApplicationListControls, ApplicationList } from "./ApplicationList";
 
 // The search and the filter chips navigate through the router.
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }));
@@ -121,7 +122,7 @@ describe("ApplicationList", () => {
         .getAllByRole("columnheader")
         .map((header) => header.textContent),
     ).toEqual([
-      `${t.columns.appliedAt}${t.sortIndicator.desc}`,
+      `${t.columns.appliedAt}${messages.list.sortIndicator.desc}`,
       t.columns.company,
       t.columns.city,
       t.columns.status,

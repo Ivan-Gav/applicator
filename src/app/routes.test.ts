@@ -6,6 +6,7 @@ import {
   firstDirection,
   SortDirection,
 } from "@/domain/application/list";
+import { DocumentSort, defaultDocumentListQuery } from "@/domain/document/list";
 import { SignInFailureReason } from "@/domain/user/model";
 import {
   ApplicationsView,
@@ -17,6 +18,13 @@ import {
   applicationsPath,
   applicationsSearchParam,
   applicationsViewOf,
+  documentFileOpenParam,
+  documentFileOpenPath,
+  documentFilePath,
+  documentsListStateOf,
+  documentsPageSize,
+  documentsPath,
+  documentsSearchParam,
   magicLinkCallbackPath,
   redirectToIn,
   redirectToParam,
@@ -214,5 +222,55 @@ describe("applicationsListStateOf", () => {
 
   it("takes the first of repeated parameters", () => {
     expect(applicationsListStateOf({ q: ["acme", "globex"] }).query.search).toBe("acme");
+  });
+});
+
+describe("documentFilePath and documentFileOpenPath", () => {
+  it("save and show the same version's file", () => {
+    expect(documentFilePath("v1")).toBe(`${routes.apiDocumentFiles}/v1`);
+    expect(parse(documentFileOpenPath("v1")).searchParams.has(documentFileOpenParam)).toBe(true);
+    expect(parse(documentFileOpenPath("v1")).pathname).toBe(`${routes.apiDocumentFiles}/v1`);
+  });
+});
+
+describe("documentsListStateOf", () => {
+  function stateOf(path: string) {
+    return documentsListStateOf(pageSearchParams(parse(path).searchParams));
+  }
+
+  it("reads the bare list as unfiltered, newest upload first, one page long", () => {
+    expect(documentsPath()).toBe(routes.documents);
+    expect(stateOf(routes.documents)).toEqual({
+      query: defaultDocumentListQuery,
+      shown: documentsPageSize,
+    });
+  });
+
+  it("reads back every part of a path it built", () => {
+    const state = {
+      query: {
+        search: "frontend dev",
+        types: ["cv", "diploma"] as const,
+        languages: ["de", "ru"] as const,
+        sort: DocumentSort.Language,
+        direction: SortDirection.Descending,
+      },
+      shown: 60,
+    };
+
+    expect(stateOf(documentsPath(state.query, state.shown))).toEqual(state);
+  });
+
+  it("drops what it does not know and never shows less than a page", () => {
+    const p = documentsSearchParam;
+
+    expect(
+      stateOf(
+        `${routes.documents}?${p.type}=cv,passport&${p.language}=fr,en&${p.sort}=size&${p.direction}=up&${p.shown}=3`,
+      ),
+    ).toEqual({
+      query: { ...defaultDocumentListQuery, types: ["cv"], languages: ["en"] },
+      shown: documentsPageSize,
+    });
   });
 });

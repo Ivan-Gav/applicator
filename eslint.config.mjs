@@ -28,6 +28,13 @@ const serviceRoleOnlyInE2e = {
     "Only the Playwright setup under e2e/ may import service-role.client.",
 };
 
+const maintenanceOnlyInScripts = {
+  group: ["**/adapters/supabase/maintenance", "**/adapters/supabase/maintenance.ts"],
+  message:
+    "maintenance.ts acts with the service role key on every user's data. " +
+    "Only scripts/ may import it; it must never be part of the deployed app.",
+};
+
 const domainMustNotDependOnAdapters = {
   group: ["@/adapters/*", "@/adapters/**", "**/adapters/*", "**/adapters/**"],
   message:
@@ -85,6 +92,23 @@ export default defineConfig([
     rules: {
       "no-restricted-imports": [
         "error",
+        {
+          patterns: [
+            supabaseOnlyInAdapters,
+            storageTypesOnlyInAdapters,
+            serviceRoleOnlyInE2e,
+            maintenanceOnlyInScripts,
+          ],
+        },
+      ],
+    },
+  },
+  {
+    name: "architecture/scripts-may-use-maintenance",
+    files: ["scripts/**"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
         { patterns: [supabaseOnlyInAdapters, storageTypesOnlyInAdapters, serviceRoleOnlyInE2e] },
       ],
     },
@@ -112,6 +136,7 @@ export default defineConfig([
             supabaseOnlyInAdapters,
             storageTypesOnlyInAdapters,
             serviceRoleOnlyInE2e,
+            maintenanceOnlyInScripts,
             uiMustNotDependOnApp,
           ],
         },
@@ -124,7 +149,9 @@ export default defineConfig([
     rules: {
       "no-restricted-imports": [
         "error",
-        { patterns: [supabaseOnlyInAdapters, storageTypesOnlyInAdapters] },
+        {
+          patterns: [supabaseOnlyInAdapters, storageTypesOnlyInAdapters, maintenanceOnlyInScripts],
+        },
       ],
     },
   },

@@ -5,7 +5,7 @@ import { routes } from "@/app/routes";
 import { type CreateApplicationInput, createApplicationSchema } from "@/domain/application/schema";
 
 /** The id of the user whose session `request` carries. */
-async function signedInUserId(request: APIRequestContext): Promise<string> {
+export async function signedInUserId(request: APIRequestContext): Promise<string> {
   const response = await request.get(routes.apiMe, { maxRedirects: 0 });
   if (!response.ok()) {
     throw new Error(`${routes.apiMe} answered ${response.status()}; is the session stored?`);
