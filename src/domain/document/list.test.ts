@@ -73,6 +73,18 @@ describe("sortDocuments", () => {
     ).toEqual(["older", "newer", "middle"]);
   });
 
+  it("puts what is reused before what is written for one application", () => {
+    const pack = document("pack", { type: "application_pack" });
+    const letter = document("letter", { type: "cover_letter" });
+    const anlagen = document("anlagen", { type: "attachment_set" });
+
+    expect(
+      ids(
+        sortDocuments([pack, letter, anlagen, newer], DocumentSort.Type, SortDirection.Ascending),
+      ),
+    ).toEqual(["newer", "anlagen", "letter", "pack"]);
+  });
+
   it("orders by language in list order, without a language last either way", () => {
     expect(
       ids(sortDocuments([middle, older, newer], DocumentSort.Language, SortDirection.Ascending)),
@@ -139,8 +151,8 @@ describe("documentListView", () => {
 
     expect(view.typeCounts).toEqual([
       { value: "cv", count: 2 },
-      { value: "cover_letter", count: 1 },
       { value: "diploma", count: 1 },
+      { value: "cover_letter", count: 1 },
     ]);
     expect(view.languageCounts).toEqual([
       { value: "en", count: 1 },

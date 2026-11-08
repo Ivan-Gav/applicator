@@ -17,6 +17,11 @@
   --tag-border: transparent;
 }
 
+/* Wide enough for the longest label, "Application pack". */
+.tag[data-type] {
+  min-width: 132px;
+}
+
 .tag[data-type="cv"] {
   --tag-bg: var(--doctype-cv-bg);
   --tag-fg: var(--doctype-cv-fg);
@@ -41,6 +46,14 @@
   --tag-bg: var(--doctype-portfolio-bg);
   --tag-fg: var(--doctype-portfolio-fg);
 }
+.tag[data-type="attachment_set"] {
+  --tag-bg: var(--doctype-attachment-set-bg);
+  --tag-fg: var(--doctype-attachment-set-fg);
+}
+.tag[data-type="application_pack"] {
+  --tag-bg: var(--doctype-application-pack-bg);
+  --tag-fg: var(--doctype-application-pack-fg);
+}
 .tag[data-type="other"] {
   --tag-bg: var(--doctype-other-bg);
   --tag-fg: var(--doctype-other-fg);
@@ -63,6 +76,12 @@
 }
 .swatch[data-type="portfolio"] {
   --tag-bg: var(--doctype-portfolio-dot);
+}
+.swatch[data-type="attachment_set"] {
+  --tag-bg: var(--doctype-attachment-set-dot);
+}
+.swatch[data-type="application_pack"] {
+  --tag-bg: var(--doctype-application-pack-dot);
 }
 .swatch[data-type="other"] {
   --tag-bg: var(--doctype-other-dot);

@@ -68,15 +68,15 @@ select throws_ok(
 
 select isnt(
   public.create_document(
-    '00000000-0000-4000-8000-00000000000a', 'diploma', 'MSc',
-    '00000000-0000-4000-8000-00000000000a/msc-1', 'msc.pdf', 'application/pdf', 2000, 'en'
+    '00000000-0000-4000-8000-00000000000a', 'attachment_set', 'Anlagen',
+    '00000000-0000-4000-8000-00000000000a/anlagen-1', 'anlagen.pdf', 'application/pdf', 2000, 'en'
   ),
   null,
   'alice can create a document with its first version'
 );
 select is(
   (select count(*) from public.document_version v join public.document d on d.id = v.document_id
-   where d.title = 'MSc'),
+   where d.title = 'Anlagen'),
   1::bigint,
   'the new document has its first version'
 );

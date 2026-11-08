@@ -141,7 +141,7 @@ describe("DocumentList", () => {
     renderList([
       aDocument({
         title: "MSc in Computer Science",
-        type: "diploma",
+        type: "application_pack",
         language: "de",
         versions: [aVersion({ fileName: "msc.pdf", uploadedAt: new Date("2026-09-30T23:30:00Z") })],
       }),
@@ -150,7 +150,7 @@ describe("DocumentList", () => {
     const diploma = within(row("MSc in Computer Science"));
     expect(diploma.getByText("msc.pdf")).toBeInTheDocument();
     expect(diploma.getByText(t.fileSummary("PDF", "240 kB"))).toBeInTheDocument();
-    expect(diploma.getByText(t.type.diploma)).toBeInTheDocument();
+    expect(diploma.getByText(t.type.application_pack)).toBeInTheDocument();
     expect(diploma.getByText(t.language.de)).toBeInTheDocument();
     // Berlin's day, not UTC's.
     expect(diploma.getByText("1 Oct 2026")).toBeInTheDocument();

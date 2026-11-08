@@ -1,13 +1,23 @@
 import type { DocumentFormat } from "./format";
 import type { StorageKey } from "./storage";
 
+/**
+ * In the order the list shows and sorts them: what is reused across
+ * applications first, then what is written for one application, then the rest.
+ */
 export const documentTypes = [
+  // Reused across applications.
   "cv",
-  "cover_letter",
+  // Supporting documents merged into one file: the Anlagen of a German application.
+  "attachment_set",
   "certificate",
   "diploma",
   "reference",
   "portfolio",
+  // Written for one application.
+  "cover_letter",
+  // Everything for one application in one file, cover letter included.
+  "application_pack",
   "other",
 ] as const;
 export type DocumentType = (typeof documentTypes)[number];

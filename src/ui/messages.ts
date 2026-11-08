@@ -387,11 +387,13 @@ export const messages = {
     },
     type: {
       cv: "CV",
-      cover_letter: "Cover letter",
+      attachment_set: "Attachment set",
       certificate: "Certificate",
       diploma: "Diploma",
       reference: "Reference",
       portfolio: "Portfolio",
+      cover_letter: "Cover letter",
+      application_pack: "Application pack",
       other: "Other",
     } satisfies Record<DocumentType, string>,
     language: {

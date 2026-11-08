@@ -118,7 +118,7 @@ export function DocumentList({
                 <SortableHead
                   label={t.columns.type}
                   link={sorting[DocumentSort.Type]}
-                  className="w-35"
+                  className="w-41"
                 />
                 <SortableHead
                   label={t.columns.language}

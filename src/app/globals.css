@@ -153,6 +153,10 @@
   --doctype-reference-fg: #004267;
   --doctype-portfolio-bg: #cbe8c5;
   --doctype-portfolio-fg: #204817;
+  --doctype-attachment-set-bg: #ffd3c3;
+  --doctype-attachment-set-fg: #632914;
+  --doctype-application-pack-bg: #e1e1b8;
+  --doctype-application-pack-fg: #424000;
   --doctype-other-bg: #dddfdb;
   --doctype-other-fg: #41433e;
 
@@ -163,6 +167,8 @@
   --doctype-diploma-dot: #bf7fb9;
   --doctype-reference-dot: #51a1d5;
   --doctype-portfolio-dot: #73a967;
+  --doctype-attachment-set-dot: #d28063;
+  --doctype-application-pack-dot: #9f9d46;
   --doctype-other-dot: #90938d;
 }
 
@@ -248,6 +254,10 @@
   --doctype-reference-fg: #c4e7ff;
   --doctype-portfolio-bg: #23411c;
   --doctype-portfolio-fg: #d0eacb;
+  --doctype-attachment-set-bg: #562a1a;
+  --doctype-attachment-set-fg: #ffd7c9;
+  --doctype-application-pack-bg: #3c3a04;
+  --doctype-application-pack-fg: #e4e4be;
   --doctype-other-bg: #343632;
   --doctype-other-fg: #d6d9d3;
 }
