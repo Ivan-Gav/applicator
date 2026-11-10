@@ -1,4 +1,10 @@
-import type { Application, ApplicationStatus, StatusEvent } from "./model";
+import type {
+  Application,
+  ApplicationStatus,
+  AttachedVersion,
+  DocumentUse,
+  StatusEvent,
+} from "./model";
 import type { CreateApplication, UpdateApplication } from "./schema";
 
 /** The free-text fields whose values are offered as suggestions. */
@@ -41,6 +47,23 @@ export interface ApplicationRepository {
 
   /** Every status the application has held, oldest first. */
   statusHistory(userId: string, applicationId: string): Promise<StatusEvent[]>;
+
+  /** The versions attached to the application, in the order they are listed. */
+  attachedVersions(userId: string, applicationId: string): Promise<AttachedVersion[]>;
+
+  /**
+   * Makes `versionIds`, in this order, the versions attached to the
+   * application, all or none. Returns false, storing nothing, when a version
+   * is not the user's, two are of one document, or there is no such application.
+   */
+  replaceAttachedVersions(
+    userId: string,
+    applicationId: string,
+    versionIds: readonly string[],
+  ): Promise<boolean>;
+
+  /** Every attached version with its application, archived ones included, the newest application first. */
+  listDocumentUses(userId: string): Promise<DocumentUse[]>;
 
   /**
    * Every value the field holds across the user's applications, archived ones

@@ -24,6 +24,20 @@ export function formatDay(instant: Date, timeZone: string): string {
   return new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone }).format(instant);
 }
 
+/**
+ * The day of an instant in `timeZone`, short: "28 Sept", with a two-digit
+ * year when it is not the year of `now` there: "28 Sept 25".
+ */
+export function formatShortDay(instant: Date, timeZone: string, now: Date): string {
+  const sameYear = isoDay(instant, timeZone).slice(0, 4) === isoDay(now, timeZone).slice(0, 4);
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: sameYear ? undefined : "2-digit",
+    timeZone,
+  }).format(instant);
+}
+
 /** The day of an instant in `timeZone` as YYYY-MM-DD, e.g. for <time dateTime>. */
 export function isoDay(instant: Date, timeZone: string): string {
   const parts = new Intl.DateTimeFormat("en", {

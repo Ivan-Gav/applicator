@@ -7,6 +7,7 @@ import {
   documentListView,
   firstDocumentDirection,
   isDocumentListFiltered,
+  isOfferedForAttaching,
   matchesDocumentSearch,
   sortDocuments,
 } from "./list";
@@ -183,5 +184,23 @@ describe("isDocumentListFiltered and firstDocumentDirection", () => {
     expect(firstDocumentDirection(DocumentSort.Title)).toBe(SortDirection.Ascending);
     expect(firstDocumentDirection(DocumentSort.Type)).toBe(SortDirection.Ascending);
     expect(firstDocumentDirection(DocumentSort.Language)).toBe(SortDirection.Ascending);
+  });
+});
+
+describe("isOfferedForAttaching", () => {
+  const letter = { type: "cover_letter" as const, title: "Anschreiben Kestrel Robotics" };
+
+  it("offers every document for blank text and no type", () => {
+    expect(isOfferedForAttaching(letter, null, "  ")).toBe(true);
+  });
+
+  it("finds the text in the title, ignoring case", () => {
+    expect(isOfferedForAttaching(letter, null, "kestrel")).toBe(true);
+    expect(isOfferedForAttaching(letter, null, "nordlicht")).toBe(false);
+  });
+
+  it("keeps only the chosen type", () => {
+    expect(isOfferedForAttaching(letter, "cover_letter", "")).toBe(true);
+    expect(isOfferedForAttaching(letter, "cv", "kestrel")).toBe(false);
   });
 });

@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import { applicationRepositoryForRequest } from "@/adapters/supabase/application.repository";
 import { documentRepositoryForRequest } from "@/adapters/supabase/document.repository";
 import { requestTimeZone } from "@/app/_utils/request-time-zone";
 import { currentUser } from "@/app/auth/_utils/current-user";
 import {
+  applicationPath,
   documentFileOpenPath,
   documentFilePath,
   documentsListStateOf,
@@ -35,8 +37,9 @@ export default async function DocumentsPage({ searchParams }: PageProps<"/docume
     return null;
   }
   const { query, shown } = documentsListStateOf(await searchParams);
-  const [documents, timeZone] = await Promise.all([
+  const [documents, uses, timeZone] = await Promise.all([
     documentRepositoryForRequest().then((repository) => repository.list(user.id)),
+    applicationRepositoryForRequest().then((repository) => repository.listDocumentUses(user.id)),
     requestTimeZone(),
   ]);
   // The whole list is filtered here; only the documents to show reach the browser.
@@ -55,6 +58,8 @@ export default async function DocumentsPage({ searchParams }: PageProps<"/docume
         }
         fileHref={documentFilePath}
         fileOpenHref={documentFileOpenPath}
+        uses={uses}
+        applicationHref={applicationPath}
         timeZone={timeZone}
         actions={actions}
       />

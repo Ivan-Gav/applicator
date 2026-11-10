@@ -152,8 +152,16 @@ A `document` is an identity (type, title, language); a `document_version`
 is one file, whose file type is its `format`. **Versions are immutable**: no
 update policy on the table or on the storage objects, no "replace file"
 action, and no deleting a single version. A revision is a new version, and
-the newest version is always the current one. Applications will link to a
-version, not a document.
+the newest version is always the current one.
+
+An application links to a **version**, not a document (`application_document`):
+which version was sent is the point. A document is attached to an application
+once; changing the version sent changes that link. The version is stored
+explicitly, and nothing moves a link to a newer version. Attachments are form
+state, written with the other fields by the form's save button.
+**A document with an attached version cannot be deleted**: the foreign key to
+`document_version` restricts, and the documents page explains the refusal
+instead of confirming. Archived and closed applications count.
 
 Files go through the `DocumentStorage` port (`src/domain/document/storage.ts`).
 The database stores an opaque key (`<user id>/<random id>`, never the uploaded

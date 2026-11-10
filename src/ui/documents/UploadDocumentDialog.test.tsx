@@ -2,7 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { maxDocumentFileBytes } from "@/domain/document/format";
-import { DocumentUploadFailure, type DocumentUploadOutcome } from "@/domain/document/model";
+import { DocumentUploadFailure, type NewDocumentOutcome } from "@/domain/document/model";
 import { documentFormField } from "@/domain/document/schema";
 import { messages } from "@/ui/messages";
 import { UploadDocumentDialog } from "./UploadDocumentDialog";
@@ -16,8 +16,8 @@ function pdf(name = "cv-2026.pdf", size = 9) {
 
 // applyAccept off: a person can always switch the file picker to "All files".
 async function openDialog() {
-  const upload = vi.fn<(form: FormData) => Promise<DocumentUploadOutcome>>(() =>
-    Promise.resolve({ failure: null }),
+  const upload = vi.fn<(form: FormData) => Promise<NewDocumentOutcome>>(() =>
+    Promise.resolve({ failure: null, documentId: "d-new" }),
   );
   render(<UploadDocumentDialog upload={upload} />);
   const user = userEvent.setup({ applyAccept: false });

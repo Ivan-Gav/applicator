@@ -9,6 +9,7 @@ import {
   firstDirection,
   isFiltered,
   longWaitDays,
+  matchesCompanyOrPosition,
   matchesSearch,
   SortDirection,
   sortApplications,
@@ -323,5 +324,19 @@ describe("applicationListView", () => {
       { city: "Munich", count: 1 },
     ]);
     expect(view.matching).toBe(2);
+  });
+});
+
+describe("matchesCompanyOrPosition", () => {
+  const application = { companyName: "Kestrel Robotics", positionTitle: "Frontend Engineer" };
+
+  it("finds the text in company or position, ignoring case", () => {
+    expect(matchesCompanyOrPosition(application, "KESTREL")).toBe(true);
+    expect(matchesCompanyOrPosition(application, "frontend")).toBe(true);
+    expect(matchesCompanyOrPosition(application, "backend")).toBe(false);
+  });
+
+  it("matches everything for blank text", () => {
+    expect(matchesCompanyOrPosition(application, " ")).toBe(true);
   });
 });

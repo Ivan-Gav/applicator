@@ -2,8 +2,10 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { DocumentSort } from "@/domain/document/list";
-import type { Document } from "@/domain/document/model";
+import type { DocumentUse } from "@/domain/application/model";
+import { type Document, DocumentDeleteFailure } from "@/domain/document/model";
 import { SortDirection } from "@/lib/sort-direction";
+import { anApplication } from "@/test/application.fixture";
 import { aDocument, aVersion } from "@/test/document.fixture";
 import { messages } from "@/ui/messages";
 import type { SortLink } from "@/ui/SortableHead";
@@ -52,13 +54,16 @@ function renderList(
     controls?: DocumentListControls | null;
     nothingMatches?: boolean;
     showMoreHref?: string;
+    uses?: DocumentUse[];
   } = {},
 ) {
   const actions = {
-    upload: vi.fn<DocumentListActions["upload"]>(() => Promise.resolve({ failure: null })),
+    upload: vi.fn<DocumentListActions["upload"]>(() =>
+      Promise.resolve({ failure: null, documentId: "d-new" }),
+    ),
     addVersion: vi.fn<DocumentListActions["addVersion"]>(() => Promise.resolve({ failure: null })),
     rename: vi.fn<DocumentListActions["rename"]>(() => Promise.resolve(true)),
-    delete: vi.fn<DocumentListActions["delete"]>(() => Promise.resolve()),
+    delete: vi.fn<DocumentListActions["delete"]>(() => Promise.resolve(null)),
   };
   render(
     <DocumentList
@@ -69,6 +74,8 @@ function renderList(
       showMoreHref={overrides.showMoreHref ?? null}
       fileHref={(versionId) => `/files/${versionId}`}
       fileOpenHref={(versionId) => `/files/${versionId}?open`}
+      uses={overrides.uses ?? []}
+      applicationHref={(applicationId) => `/applications/${applicationId}`}
       timeZone={timeZone}
       actions={actions}
     />,
@@ -269,5 +276,93 @@ describe("DocumentList", () => {
     await user.click(within(confirm).getByRole("button", { name: t.deleteDialog.confirm }));
 
     expect(actions.delete).toHaveBeenCalledExactlyOnceWith("d1");
+  });
+
+  it("refuses to delete a document applications hold, listing them with the version sent", async () => {
+    const uses: DocumentUse[] = [
+      {
+        documentId: "d1",
+        versionId: "v2",
+        application: anApplication({ id: "a2", companyName: "Kestrel", status: "interview" }),
+      },
+      {
+        documentId: "d1",
+        versionId: "v1",
+        application: anApplication({
+          id: "a1",
+          companyName: "Lumen",
+          positionTitle: "UI Engineer",
+          status: "rejected",
+          archivedAt: new Date("2026-10-01T09:00:00Z"),
+        }),
+      },
+    ];
+    const { actions, user } = renderList(
+      [aDocument({ id: "d1", title: "CV", versions: [revised, original] })],
+      { uses },
+    );
+
+    await user.click(iconButton(t.actions.delete, "CV"));
+    const refusal = screen.getByRole("alertdialog", { name: t.inUseDialog.title });
+
+    expect(refusal).toHaveTextContent(`CV${t.inUseDialog.description(2)}`);
+    expect(refusal).toHaveTextContent(t.inUseDialog.count(2));
+    const links = within(refusal).getAllByRole("link");
+    expect(links.map((link) => link.getAttribute("href"))).toEqual([
+      "/applications/a2",
+      "/applications/a1",
+    ]);
+    expect(links[0]).toHaveTextContent(
+      `Kestrel${t.inUseDialog.summary(messages.applications.status.interview, "Engineer", false)}backend-heavy`,
+    );
+    expect(links[1]).toHaveTextContent(
+      `Lumen${t.inUseDialog.summary(messages.applications.status.rejected, "UI Engineer", true)}${t.versions.original}`,
+    );
+    expect(within(refusal).queryByRole("searchbox")).not.toBeInTheDocument();
+    expect(
+      within(refusal).queryByRole("button", { name: t.deleteDialog.confirm }),
+    ).not.toBeInTheDocument();
+
+    await user.click(within(refusal).getByRole("button", { name: t.inUseDialog.close }));
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(actions.delete).not.toHaveBeenCalled();
+  });
+
+  it("filters a long list of holding applications by company or position", async () => {
+    const uses: DocumentUse[] = Array.from({ length: 12 }, (_, index) => ({
+      documentId: "d1",
+      versionId: "v1",
+      application: anApplication({
+        id: `a${index}`,
+        companyName: `Company ${index}`,
+        positionTitle: index % 4 === 0 ? "Frontend Lead" : "Engineer",
+      }),
+    }));
+    const { user } = renderList([aDocument({ id: "d1", title: "CV", versions: [original] })], {
+      uses,
+    });
+
+    await user.click(iconButton(t.actions.delete, "CV"));
+    const refusal = screen.getByRole("alertdialog", { name: t.inUseDialog.title });
+    await user.type(within(refusal).getByRole("searchbox", { name: t.inUseDialog.filter }), "lead");
+
+    expect(within(refusal).getAllByRole("link")).toHaveLength(3);
+    expect(refusal).toHaveTextContent(t.inUseDialog.countFiltered(3, 12));
+
+    await user.clear(within(refusal).getByRole("searchbox"));
+    await user.type(within(refusal).getByRole("searchbox"), "nowhere");
+    expect(refusal).toHaveTextContent(t.inUseDialog.nothingMatches);
+  });
+
+  it("says so when the server refuses the deletion because the document became attached", async () => {
+    const { actions, user } = renderList([
+      aDocument({ id: "d1", title: "CV", versions: [original] }),
+    ]);
+    actions.delete.mockResolvedValue(DocumentDeleteFailure.InUse);
+
+    await user.click(iconButton(t.actions.delete, "CV"));
+    await user.click(screen.getByRole("button", { name: t.deleteDialog.confirm }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(t.actions.inUse);
   });
 });

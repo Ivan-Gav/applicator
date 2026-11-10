@@ -1,5 +1,11 @@
 import { randomUUID } from "node:crypto";
-import type { Application, ApplicationStatus, StatusEvent } from "@/domain/application/model";
+import type {
+  Application,
+  ApplicationStatus,
+  AttachedVersion,
+  DocumentUse,
+  StatusEvent,
+} from "@/domain/application/model";
 import type { ApplicationRepository, DistinctValueField } from "@/domain/application/repository";
 import type { CreateApplication, UpdateApplication } from "@/domain/application/schema";
 import { mostCommonFirst } from "@/lib/most-common-first";
@@ -7,14 +13,26 @@ import { mostCommonFirst } from "@/lib/most-common-first";
 type Stored = { userId: string; application: Application };
 type Journalled = { userId: string; applicationId: string; event: StatusEvent };
 
+/** The document a version of the user belongs to, or null when the user has no such version. */
+export type VersionLookup = (
+  userId: string,
+  versionId: string,
+) => Promise<{ documentId: string } | null>;
+
 /** ApplicationRepository over an array, for tests that need no database. */
 export class InMemoryApplicationRepository implements ApplicationRepository {
   // Oldest first: insertion order stands in for created_at.
   private readonly stored: Stored[] = [];
   // Stands in for the status_event trigger.
   private readonly journal: Journalled[] = [];
+  // By application id, in list order.
+  private readonly attachments = new Map<string, AttachedVersion[]>();
 
-  constructor(private readonly now: () => Date = () => new Date()) {}
+  constructor(
+    private readonly now: () => Date = () => new Date(),
+    // Stands in for the foreign key to document_version.
+    private readonly findVersion: VersionLookup = () => Promise.resolve(null),
+  ) {}
 
   listActive(userId: string): Promise<Application[]> {
     return this.list(userId, (application) => application.archivedAt === null);
@@ -102,6 +120,7 @@ export class InMemoryApplicationRepository implements ApplicationRepository {
     );
     if (index !== -1) {
       this.stored.splice(index, 1);
+      this.attachments.delete(id);
       for (let i = this.journal.length - 1; i >= 0; i--) {
         if (this.journal[i]?.applicationId === id) {
           this.journal.splice(i, 1);
@@ -118,6 +137,53 @@ export class InMemoryApplicationRepository implements ApplicationRepository {
         .map((entry) => structuredClone(entry.event))
         .sort((a, b) => a.occurredAt.getTime() - b.occurredAt.getTime()),
     );
+  }
+
+  attachedVersions(userId: string, applicationId: string): Promise<AttachedVersion[]> {
+    const attached = this.entry(userId, applicationId) ? this.attachments.get(applicationId) : [];
+    return Promise.resolve(structuredClone(attached ?? []));
+  }
+
+  async replaceAttachedVersions(
+    userId: string,
+    applicationId: string,
+    versionIds: readonly string[],
+  ): Promise<boolean> {
+    if (!this.entry(userId, applicationId)) {
+      return false;
+    }
+    const found = await Promise.all(
+      versionIds.map(async (versionId) => {
+        const version = await this.findVersion(userId, versionId);
+        return version && { documentId: version.documentId, versionId };
+      }),
+    );
+    const attached = found.filter((version) => version !== null);
+    const documents = new Set(attached.map(({ documentId }) => documentId));
+    if (attached.length !== versionIds.length || documents.size !== attached.length) {
+      return false;
+    }
+    this.attachments.set(applicationId, attached);
+    return true;
+  }
+
+  listDocumentUses(userId: string): Promise<DocumentUse[]> {
+    return Promise.resolve(
+      this.stored
+        .filter((entry) => entry.userId === userId)
+        .reverse()
+        .flatMap(({ application }) =>
+          (this.attachments.get(application.id) ?? []).map((attached) => ({
+            ...attached,
+            application: structuredClone(application),
+          })),
+        ),
+    );
+  }
+
+  /** The ids of every version attached anywhere, standing in for the restricting foreign key. */
+  attachedVersionIds(): Set<string> {
+    return new Set([...this.attachments.values()].flat().map(({ versionId }) => versionId));
   }
 
   distinctValues(userId: string, field: DistinctValueField): Promise<string[]> {

@@ -20,10 +20,11 @@ import { Input } from "@/ui/kit/input";
 import { NativeSelect, NativeSelectOption } from "@/ui/kit/native-select";
 import { messages } from "@/ui/messages";
 
-export type UploadFormProps = {
+export type UploadFormProps<Outcome extends DocumentUploadOutcome> = {
   /** Stores the upload. Resolves with why it was refused, or no failure once stored. */
-  submit: (form: FormData) => Promise<DocumentUploadOutcome>;
-  onStored: () => void;
+  submit: (form: FormData) => Promise<Outcome>;
+  /** Called with what `submit` resolved with once stored. */
+  onStored: (outcome: Outcome) => void;
   /** Whether the form also asks for type, title and language, as a new document's does. */
   withDetails: boolean;
 };
@@ -44,7 +45,11 @@ function titleOf(fileName: string): string {
 }
 
 /** A file and its version label, and for a new document its type, title and language. */
-export function UploadForm({ submit, onStored, withDetails }: UploadFormProps) {
+export function UploadForm<Outcome extends DocumentUploadOutcome>({
+  submit,
+  onStored,
+  withDetails,
+}: UploadFormProps<Outcome>) {
   const id = useId();
   const fileInput = useRef<HTMLInputElement>(null);
   const titleInput = useRef<HTMLInputElement>(null);
@@ -100,7 +105,7 @@ export function UploadForm({ submit, onStored, withDetails }: UploadFormProps) {
         if (outcome.failure) {
           setFailure(t.failure[outcome.failure]);
         } else {
-          onStored();
+          onStored(outcome);
         }
       } catch {
         setFailure(t.failed);

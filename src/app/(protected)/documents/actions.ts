@@ -13,8 +13,10 @@ import {
   formatDetails,
 } from "@/domain/document/format";
 import {
+  DocumentDeleteFailure,
   type DocumentUploadOutcome,
   DocumentUploadFailure,
+  type NewDocumentOutcome,
   type NewDocumentVersion,
 } from "@/domain/document/model";
 import {
@@ -28,7 +30,7 @@ import type { DocumentStorage, StorageKey } from "@/domain/document/storage";
 
 const stored: DocumentUploadOutcome = { failure: null };
 
-function refused(failure: DocumentUploadFailure): DocumentUploadOutcome {
+function refused(failure: DocumentUploadFailure): { failure: DocumentUploadFailure } {
   return { failure };
 }
 
@@ -65,34 +67,37 @@ async function removeFiles(storage: DocumentStorage, keys: readonly StorageKey[]
 
 /**
  * Stores the file, then the row naming it, so that a row never names a
- * missing file. When the row cannot be stored, the file is removed again.
+ * missing file. `storeRow` resolves with the id of the document the row went
+ * to, or null when there is none; then, or when it fails, the file is removed again.
  */
 async function storeVersion(
   storage: DocumentStorage,
   userId: string,
   { file, format }: { file: File; format: DocumentFormat },
   label: string | null,
-  storeRow: (version: NewDocumentVersion) => Promise<boolean>,
-): Promise<boolean> {
+  storeRow: (version: NewDocumentVersion) => Promise<string | null>,
+): Promise<string | null> {
   const storageKey = await storage.save(userId, file, formatDetails[format].mediaType);
   const version = { storageKey, fileName: file.name, format, sizeBytes: file.size, label };
-  let rowStored = false;
+  let documentId: string | null = null;
   try {
-    rowStored = await storeRow(version);
+    documentId = await storeRow(version);
   } finally {
-    if (!rowStored) {
+    if (documentId === null) {
       await removeFiles(storage, [storageKey]);
     }
   }
-  return rowStored;
+  return documentId;
 }
 
+// The documents list, and every application page, which lists documents to attach.
 function revalidateDocuments() {
   revalidatePath(routes.documents);
+  revalidatePath(routes.applications, "layout");
 }
 
-/** Stores a new document with the uploaded file as its first version. */
-export async function uploadDocument(form: FormData): Promise<DocumentUploadOutcome> {
+/** Stores a new document with the uploaded file as its first version, and resolves with its id. */
+export async function uploadDocument(form: FormData): Promise<NewDocumentOutcome> {
   const user = await requireUser();
   const f = documentFormField;
   const details = documentDetailsSchema.safeParse({
@@ -113,12 +118,17 @@ export async function uploadDocument(form: FormData): Promise<DocumentUploadOutc
     documentRepositoryForRequest(),
     documentStorageForRequest(),
   ]);
-  await storeVersion(storage, user.id, upload, label.data, async (version) => {
-    await repository.create(user.id, details.data, version);
-    return true;
-  });
+  const documentId = await storeVersion(
+    storage,
+    user.id,
+    upload,
+    label.data,
+    async (version) => (await repository.create(user.id, details.data, version)).id,
+  );
   revalidateDocuments();
-  return stored;
+  return documentId === null
+    ? refused(DocumentUploadFailure.Missing)
+    : { failure: null, documentId };
 }
 
 /** Adds the uploaded file as the newest version of a document, which is then its current one. */
@@ -146,10 +156,10 @@ export async function addDocumentVersion(
     user.id,
     upload,
     label.data,
-    async (version) => (await repository.addVersion(user.id, id.data, version)) !== null,
+    async (version) => (await repository.addVersion(user.id, id.data, version))?.documentId ?? null,
   );
   revalidateDocuments();
-  return added ? stored : refused(DocumentUploadFailure.Missing);
+  return added === null ? refused(DocumentUploadFailure.Missing) : stored;
 }
 
 /** Whether the title was valid and the document still there to take it. */
@@ -170,12 +180,13 @@ export async function renameDocument(documentId: unknown, title: unknown): Promi
  * Deletes the rows first, then the files. A failure between the two leaves a
  * file no row names, never a row naming a missing file. The files go after
  * the response: once the rows are gone, the deletion is done for the user.
+ * Resolves with why nothing was deleted, or null.
  */
-export async function deleteDocument(documentId: unknown): Promise<void> {
+export async function deleteDocument(documentId: unknown): Promise<DocumentDeleteFailure | null> {
   const user = await requireUser();
   const id = documentIdSchema.safeParse(documentId);
   if (!id.success) {
-    return;
+    return null;
   }
   const [repository, storage] = await Promise.all([
     documentRepositoryForRequest(),
@@ -183,5 +194,9 @@ export async function deleteDocument(documentId: unknown): Promise<void> {
   ]);
   const keys = await repository.delete(user.id, id.data);
   revalidateDocuments();
+  if (keys === null) {
+    return DocumentDeleteFailure.InUse;
+  }
   after(() => removeFiles(storage, keys));
+  return null;
 }

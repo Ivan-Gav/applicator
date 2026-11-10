@@ -98,6 +98,7 @@ export function DocumentRow({ row, timeZone, actions }: DocumentRowProps) {
             title={row.title}
             downloadHref={chosen.download}
             versionCount={row.withVersions ? row.versions.length : null}
+            uses={row.uses}
             actions={actions}
           />
         </div>

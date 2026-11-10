@@ -158,3 +158,18 @@ export function documentListView(
     languageCounts: countsOf(documentLanguages, (document) => document.language),
   };
 }
+
+/**
+ * Whether a document is offered for attaching: of `type`, unless that is
+ * null, with `text` in its title, ignoring case; blank text matches every title.
+ */
+export function isOfferedForAttaching(
+  document: Pick<Document, "type" | "title">,
+  type: DocumentType | null,
+  text: string,
+): boolean {
+  const wanted = text.trim().toLocaleLowerCase();
+  return (
+    (type === null || document.type === type) && document.title.toLocaleLowerCase().includes(wanted)
+  );
+}

@@ -12,8 +12,10 @@ import type {
   JsonApplicationField,
   RejectedValue,
 } from "@/domain/application/json";
+import { sameAttachments, withAttached } from "@/domain/application/attachments";
 import {
   type Application,
+  type AttachedVersion,
   applicationStatuses,
   channels,
   seniorities,
@@ -35,9 +37,12 @@ import { NativeSelect, NativeSelectOption } from "@/ui/kit/native-select";
 import { awaitingHydrationClass, useHydrated } from "@/ui/hooks/use-hydrated";
 import { Textarea } from "@/ui/kit/textarea";
 import { messages } from "@/ui/messages";
+import type { UploadDocument } from "@/ui/documents/UploadDocumentDialog";
 import type { SuggestionSearch } from "@/ui/SuggestionField";
+import type { AttachableDocument } from "./attachable-documents";
 import { CityField } from "./CityField";
 import { ContactFields } from "./ContactFields";
+import { DocumentsPanel } from "./DocumentsPanel";
 import { JsonPaste } from "./JsonPaste";
 import { LeaveEmptyButton } from "./LeaveEmptyButton";
 import { SalaryFields } from "./SalaryFields";
@@ -64,10 +69,11 @@ import { advertisedSalaryText } from "./salary-text";
 
 export type ApplicationFormProps = {
   /**
-   * Stores the input. Resolves with the rejected fields, none once an edit is
-   * saved; a new application navigates away instead.
+   * Stores the input with the ids of the versions to attach, in list order.
+   * Resolves with the rejected fields, none once an edit is saved; a new
+   * application navigates away instead.
    */
-  save: (input: CreateApplication) => Promise<ApplicationRejection>;
+  save: (input: CreateApplication, attachedVersionIds: string[]) => Promise<ApplicationRejection>;
   backHref: string;
   /** Where the city field looks cities up. */
   citySearch: SuggestionSearch;
@@ -77,7 +83,15 @@ export type ApplicationFormProps = {
   application?: Application;
   /** Where the JSON format is described; a new application given one can be filled in from JSON. */
   jsonFormatHref?: string;
+  /** Every document of the user, newest upload first, to attach. */
+  documents: readonly AttachableDocument[];
+  /** The versions the application has attached, as stored. */
+  attached?: readonly AttachedVersion[];
+  /** Stores a new document, which is then attached. */
+  uploadDocument: UploadDocument;
 };
+
+const noAttachments: readonly AttachedVersion[] = [];
 
 const t = messages.applications.form;
 // Web addresses read better in a fixed-width face.
@@ -103,6 +117,9 @@ export function ApplicationForm({
   sourceSearch,
   application,
   jsonFormatHref,
+  documents,
+  attached: storedAttachments = noAttachments,
+  uploadDocument,
 }: ApplicationFormProps) {
   const editing = application !== undefined;
   const [failure, setFailure] = useState<string | null>(null);
@@ -120,10 +137,21 @@ export function ApplicationForm({
   const [pasteRejected, setPasteRejected] = useState<readonly RejectedValue[]>([]);
   // Whether a save was refused for the marks; said only while some remain.
   const [pasteBlocked, setPasteBlocked] = useState(false);
+  // Attachments are form state like the fields: stored only by saving.
+  const [attachments, setAttachments] = useState(storedAttachments);
+  const [savedAttachments, setSavedAttachments] = useState(storedAttachments);
+  // A document uploaded from the panel, attached once the refreshed page lists it.
+  const [awaitedUpload, setAwaitedUpload] = useState<string | null>(null);
+  const uploaded =
+    awaitedUpload === null ? undefined : documents.find(({ id }) => id === awaitedUpload);
+  if (uploaded) {
+    setAwaitedUpload(null);
+    setAttachments(withAttached(attachments, uploaded));
+  }
   const { errors, isSubmitting, isDirty } = form.formState;
   const pending = saving || isSubmitting;
   // An edit with nothing changed has nothing to save.
-  const unchanged = editing && !isDirty;
+  const unchanged = editing && !isDirty && sameAttachments(attachments, savedAttachments);
   const salaryPasteRejected = rejectedWithin(pasteRejected, "salary");
   const contactPasteRejected = rejectedWithin(pasteRejected, "contact");
   const salaryShown = salaryOpen || errors.salary !== undefined || salaryPasteRejected.length > 0;
@@ -192,7 +220,9 @@ export function ApplicationForm({
     for (const field of shown) {
       form.setError(field, { type: "server" });
     }
-    if (shown.length < invalidFields.length) {
+    if (invalidFields.includes("attachments")) {
+      setFailure(t.documents.refused);
+    } else if (shown.length < invalidFields.length) {
       setFailure(t.rejected);
     }
   }
@@ -208,13 +238,18 @@ export function ApplicationForm({
         return;
       }
       const submitted = form.getValues();
+      const submittedAttachments = attachments;
       startSaving(async () => {
         try {
-          const rejection = await save(values);
+          const rejection = await save(
+            values,
+            submittedAttachments.map(({ versionId }) => versionId),
+          );
           showRejection(rejection);
           if (editing && rejection.invalidFields.length === 0) {
             // What was saved becomes the baseline; edits typed meanwhile stay.
             form.reset(submitted, { keepValues: true });
+            setSavedAttachments(submittedAttachments);
             toast.success(t.saved);
           }
         } catch (error) {
@@ -513,6 +548,14 @@ export function ApplicationForm({
         errors={errors.contact}
         open={contactShown}
         onOpenChange={setContactOpen}
+      />
+
+      <DocumentsPanel
+        documents={documents}
+        attached={attachments}
+        onChange={setAttachments}
+        upload={uploadDocument}
+        onUploaded={setAwaitedUpload}
       />
 
       {pasteBlocked && pasteRejected.length > 0 && (

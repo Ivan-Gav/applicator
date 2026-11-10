@@ -359,6 +359,42 @@ export const messages = {
           url: "Enter a full web address starting with http:// or https://.",
         } satisfies Record<ContactPart, string>,
       },
+      documents: {
+        title: "Documents",
+        count: (count: number) => `${count} attached`,
+        listLabel: "Attached documents",
+        empty: "Nothing attached yet. Add the CV and the cover letter you are sending.",
+        // The version button's accessible name, and the title of its menu.
+        version: (title: string) => `Version of ${title} sent`,
+        versionMenuTitle: "Version sent",
+        remove: (title: string) => `Remove ${title}`,
+        addGroup: "Add a document",
+        type: "Type",
+        // The type select's first option, which narrows nothing.
+        anyType: "Type",
+        document: "Document",
+        placeholder: {
+          any: "Find a document to attach",
+          cv: "Find a CV to attach",
+          attachment_set: "Find an attachment set to attach",
+          certificate: "Find a certificate to attach",
+          diploma: "Find a diploma to attach",
+          reference: "Find a reference to attach",
+          portfolio: "Find a portfolio to attach",
+          cover_letter: "Find a cover letter to attach",
+          application_pack: "Find an application pack to attach",
+          other: "Find a document to attach",
+        } satisfies Record<DocumentType | "any", string>,
+        add: "Add",
+        options: "Documents",
+        // Shown instead of the date of a document already attached.
+        attached: "attached",
+        nothingMatches: (text: string) => `Nothing matches “${text}”.`,
+        noDocuments: "No documents yet.",
+        uploadAndAttach: "Upload and attach…",
+        refused:
+          "The documents could not be attached: one of them may have been deleted meanwhile. Reload the page and try again.",
+      },
       rejected: "The application could not be saved. Check the details and try again.",
       saveFailed: "The application could not be saved. Try again in a moment.",
       submit: "Save application",
@@ -461,6 +497,7 @@ export const messages = {
       rename: "Rename",
       delete: "Delete",
       failed: "That did not work. Try again in a moment.",
+      inUse: "This document was attached to an application meanwhile, so it was not deleted.",
     },
     form: {
       file: "File",
@@ -508,6 +545,26 @@ export const messages = {
       saving: "Saving…",
       cancel: "Cancel",
       rejected: "Enter a title, up to 200 characters.",
+    },
+    // Shown instead of the delete confirmation while applications hold the document.
+    inUseDialog: {
+      title: "This document is still in use",
+      // Follows the document's title, which is shown in bold.
+      description: (count: number) =>
+        ` is attached to ${count === 1 ? "1 application" : `${count} applications`}, so it can’t be deleted. Detach it from each of them first.`,
+      filter: "Filter applications",
+      filterPlaceholder: "Filter by company or position",
+      count: (total: number) =>
+        `${total === 1 ? "1 application" : `${total} applications`}, newest first`,
+      countFiltered: (matching: number, total: number) =>
+        `${matching} of ${total} ${total === 1 ? "application" : "applications"}`,
+      versionColumn: "Version sent",
+      // "Interview · Frontend Engineer", then " · Archived" for an archived one.
+      summary: (status: string, position: string, archived: boolean) =>
+        [status, position, ...(archived ? ["Archived"] : [])].join(" · "),
+      nothingMatches: "No application matches.",
+      note: "Archived and closed applications count too: they record what you sent.",
+      close: "Close",
     },
     deleteDialog: {
       title: "Delete this document?",

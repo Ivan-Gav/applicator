@@ -81,3 +81,16 @@ export type DocumentUploadFailure =
 
 /** What the upload actions return: why the upload was refused, or null once stored. */
 export type DocumentUploadOutcome = { failure: DocumentUploadFailure | null };
+
+/** What uploading a new document returns: the new document's id once stored. */
+export type NewDocumentOutcome =
+  | { failure: DocumentUploadFailure }
+  | { failure: null; documentId: string };
+
+// Why a deletion was refused.
+export const DocumentDeleteFailure = {
+  // An application has one of the document's versions attached.
+  InUse: "in_use",
+} as const;
+export type DocumentDeleteFailure =
+  (typeof DocumentDeleteFailure)[keyof typeof DocumentDeleteFailure];

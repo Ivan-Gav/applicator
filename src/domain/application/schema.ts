@@ -112,6 +112,12 @@ export const updateApplicationSchema = z
 
 export const applicationIdSchema = z.uuid();
 
+/** The versions to attach to an application, in the order they are listed, each once. */
+export const attachedVersionIdsSchema = z
+  .array(z.uuid())
+  .max(100)
+  .refine((ids) => new Set(ids).size === ids.length);
+
 // A move to `status`. It is dated when it is stored, never by the caller.
 export const statusChangeSchema = z.object({
   status: applicationStatusSchema,
@@ -129,7 +135,11 @@ type SalaryPart = keyof z.output<typeof salarySchema>;
  * A field the create or update input can be rejected on: a top-level field, or
  * one part of the salary block, so that a failure names the amount it concerns.
  */
-export type ApplicationField = keyof CreateApplicationInput | `salary.${SalaryPart}`;
+export type ApplicationField =
+  | keyof CreateApplicationInput
+  | `salary.${SalaryPart}`
+  // The attached versions, which travel beside the fields.
+  | "attachments";
 
 /** Returned by the create and update actions when the input is rejected. */
 export type ApplicationRejection = { invalidFields: ApplicationField[] };

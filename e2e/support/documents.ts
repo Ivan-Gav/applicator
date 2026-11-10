@@ -18,10 +18,17 @@ export async function storedFileKeys(request: APIRequestContext): Promise<string
   return data.map((entry) => `${userId}/${entry.name}`);
 }
 
-/** Deletes every document and stored file of the user whose session `request` carries. */
+/**
+ * Deletes every document and stored file of the user whose session `request`
+ * carries, first detaching them from the user's applications.
+ */
 export async function removeDocuments(request: APIRequestContext): Promise<void> {
   const userId = await signedInUserId(request);
   const client = createServiceRoleClient();
+  const detached = await client.from("application_document").delete().eq("user_id", userId);
+  if (detached.error) {
+    throw detached.error;
+  }
   const { error } = await client.from("document").delete().eq("user_id", userId);
   if (error) {
     throw error;

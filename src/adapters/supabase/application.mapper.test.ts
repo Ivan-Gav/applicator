@@ -5,6 +5,8 @@ import {
   type ApplicationInsertRow,
   type ApplicationRow,
   type StatusEventRow,
+  attachedVersionToDomain,
+  documentUsesToDomain,
   statusEventToDomain,
   toDomain,
   toRow,
@@ -411,5 +413,36 @@ describe("statusEventToDomain", () => {
 
   it("refuses an unknown status instead of passing it through", () => {
     expect(() => statusEventToDomain({ ...row, status: "ghosted" })).toThrow("status_event.status");
+  });
+});
+
+describe("attachedVersionToDomain", () => {
+  it("keeps the document and the version sent, and nothing of storage", () => {
+    expect(
+      attachedVersionToDomain({
+        document_id: "00000000-0000-4000-8000-0000000000d1",
+        document_version_id: "00000000-0000-4000-8000-0000000000e1",
+      }),
+    ).toEqual({
+      documentId: "00000000-0000-4000-8000-0000000000d1",
+      versionId: "00000000-0000-4000-8000-0000000000e1",
+    });
+  });
+});
+
+describe("documentUsesToDomain", () => {
+  it("gives one use per attachment, each with the application", () => {
+    const uses = documentUsesToDomain({
+      ...fullRow,
+      attachments: [
+        { document_id: "d1", document_version_id: "e1" },
+        { document_id: "d2", document_version_id: "e2" },
+      ],
+    });
+
+    expect(uses).toEqual([
+      { documentId: "d1", versionId: "e1", application: toDomain(fullRow) },
+      { documentId: "d2", versionId: "e2", application: toDomain(fullRow) },
+    ]);
   });
 });

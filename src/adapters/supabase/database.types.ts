@@ -111,6 +111,45 @@ export type Database = {
         };
         Relationships: [];
       };
+      application_document: {
+        Row: {
+          application_id: string;
+          document_id: string;
+          document_version_id: string;
+          position: number;
+          user_id: string;
+        };
+        Insert: {
+          application_id: string;
+          document_id: string;
+          document_version_id: string;
+          position: number;
+          user_id: string;
+        };
+        Update: {
+          application_id?: string;
+          document_id?: string;
+          document_version_id?: string;
+          position?: number;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "application_document_application_fk";
+            columns: ["application_id", "user_id"];
+            isOneToOne: false;
+            referencedRelation: "application";
+            referencedColumns: ["id", "user_id"];
+          },
+          {
+            foreignKeyName: "application_document_version_fk";
+            columns: ["document_version_id", "document_id", "user_id"];
+            isOneToOne: false;
+            referencedRelation: "document_version";
+            referencedColumns: ["id", "document_id", "user_id"];
+          },
+        ];
+      };
       document: {
         Row: {
           created_at: string;
@@ -301,6 +340,14 @@ export type Database = {
       delete_document: {
         Args: { p_document_id: string; p_user_id: string };
         Returns: string[];
+      };
+      replace_application_documents: {
+        Args: {
+          p_application_id: string;
+          p_user_id: string;
+          p_version_ids: string[];
+        };
+        Returns: undefined;
       };
     };
     Enums: {

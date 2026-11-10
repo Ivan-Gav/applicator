@@ -14,7 +14,11 @@ type Stored = { userId: string; document: Document };
 export class InMemoryDocumentRepository implements DocumentRepository {
   private readonly stored: Stored[] = [];
 
-  constructor(private readonly now: () => Date = () => new Date()) {}
+  constructor(
+    private readonly now: () => Date = () => new Date(),
+    // Stands in for the restricting foreign key from application_document.
+    private readonly attachedVersionIds: () => ReadonlySet<string> = () => new Set(),
+  ) {}
 
   list(userId: string): Promise<Document[]> {
     return Promise.resolve(
@@ -66,10 +70,14 @@ export class InMemoryDocumentRepository implements DocumentRepository {
     return Promise.resolve(entry !== undefined);
   }
 
-  delete(userId: string, id: string): Promise<StorageKey[]> {
+  delete(userId: string, id: string): Promise<StorageKey[] | null> {
     const entry = this.entry(userId, id);
     if (!entry) {
       return Promise.resolve([]);
+    }
+    const attached = this.attachedVersionIds();
+    if (entry.document.versions.some((version) => attached.has(version.id))) {
+      return Promise.resolve(null);
     }
     this.stored.splice(this.stored.indexOf(entry), 1);
     return Promise.resolve(entry.document.versions.map((version) => version.storageKey));

@@ -45,10 +45,28 @@ const friday = new Date("2026-09-04T22:00:00.000Z");
 
 const valid = { companyName: "Acme", positionTitle: "Engineer", status: "applied" };
 
+// Document versions by id: the user's CV in two versions and letter, and the intruder's CV.
+const cvOriginal = "00000000-0000-4000-8000-0000000000e1";
+const cvRevised = "00000000-0000-4000-8000-0000000000e2";
+const letter = "00000000-0000-4000-8000-0000000000e3";
+const theirCv = "00000000-0000-4000-8000-0000000000e4";
+const versions = new Map([
+  [cvOriginal, { userId: sessionUser.id, documentId: "00000000-0000-4000-8000-0000000000d1" }],
+  [cvRevised, { userId: sessionUser.id, documentId: "00000000-0000-4000-8000-0000000000d1" }],
+  [letter, { userId: sessionUser.id, documentId: "00000000-0000-4000-8000-0000000000d2" }],
+  [theirCv, { userId: intruder, documentId: "00000000-0000-4000-8000-0000000000d3" }],
+]);
+
 let repository: InMemoryApplicationRepository;
 
 beforeEach(() => {
-  repository = new InMemoryApplicationRepository(() => createdAt);
+  repository = new InMemoryApplicationRepository(
+    () => createdAt,
+    (userId, versionId) => {
+      const version = versions.get(versionId);
+      return Promise.resolve(version?.userId === userId ? version : null);
+    },
+  );
   vi.mocked(applicationRepositoryForRequest).mockResolvedValue(repository);
   vi.mocked(requireUser).mockResolvedValue(sessionUser);
   vi.mocked(redirect).mockImplementation((to: string) => {
@@ -121,6 +139,50 @@ describe("createApplication", () => {
     });
   });
 
+  it("attaches the given versions to the new application, in their order", async () => {
+    await expect(createApplication(valid, [letter, cvRevised])).rejects.toBeInstanceOf(Redirected);
+
+    const [entry] = repository.all();
+    expect(
+      (await repository.attachedVersions(sessionUser.id, entry?.application.id ?? "")).map(
+        ({ versionId }) => versionId,
+      ),
+    ).toEqual([letter, cvRevised]);
+    expect(revalidatePath).toHaveBeenCalledWith(routes.documents);
+  });
+
+  it.each([
+    ["another user's version", [theirCv]],
+    ["two versions of one document", [cvOriginal, cvRevised]],
+    ["an unknown version", [missingId]],
+  ])("stores no application when the attachments are refused: %s", async (_, attached) => {
+    await expect(createApplication(valid, attached)).resolves.toEqual({
+      invalidFields: ["attachments"],
+    });
+
+    expect(repository.all()).toEqual([]);
+    expect(redirect).not.toHaveBeenCalled();
+  });
+
+  it("removes the new application again when attaching fails", async () => {
+    vi.spyOn(repository, "replaceAttachedVersions").mockRejectedValue(new Error("db down"));
+
+    await expect(createApplication(valid, [letter])).rejects.toThrow("db down");
+
+    expect(repository.all()).toEqual([]);
+  });
+
+  it("rejects attachments that are not distinct version ids, beside the invalid fields", async () => {
+    await expect(
+      createApplication({ ...valid, companyName: "" }, [letter, letter]),
+    ).resolves.toEqual({ invalidFields: ["companyName", "attachments"] });
+    await expect(createApplication(valid, ["not-a-uuid"])).resolves.toEqual({
+      invalidFields: ["attachments"],
+    });
+
+    expect(repository.all()).toEqual([]);
+  });
+
   it("stores nothing without a session", async () => {
     signedOut();
 
@@ -185,6 +247,54 @@ describe("updateApplication", () => {
     await expect(updateApplication(theirs.id, { notes: "Mine" })).rejects.toBeInstanceOf(NotFound);
 
     expect((await repository.find(intruder, theirs.id))?.notes).toBe("Theirs");
+  });
+
+  it("replaces the attached versions with the given ones, in their order", async () => {
+    const created = await seed();
+    await repository.replaceAttachedVersions(sessionUser.id, created.id, [cvOriginal]);
+
+    await expect(updateApplication(created.id, valid, [letter, cvRevised])).resolves.toEqual({
+      invalidFields: [],
+    });
+
+    expect(await repository.attachedVersions(sessionUser.id, created.id)).toEqual([
+      { documentId: versions.get(letter)?.documentId, versionId: letter },
+      { documentId: versions.get(cvRevised)?.documentId, versionId: cvRevised },
+    ]);
+    expect(revalidatePath).toHaveBeenCalledWith(routes.documents);
+  });
+
+  it("leaves the attachments as stored when none are given", async () => {
+    const created = await seed();
+    await repository.replaceAttachedVersions(sessionUser.id, created.id, [cvOriginal]);
+
+    await updateApplication(created.id, { ...valid, notes: "Changed" });
+
+    expect(await repository.attachedVersions(sessionUser.id, created.id)).toHaveLength(1);
+  });
+
+  it("returns refused attachments, keeping the stored ones and the saved fields", async () => {
+    const created = await seed();
+    await repository.replaceAttachedVersions(sessionUser.id, created.id, [cvOriginal]);
+
+    await expect(
+      updateApplication(created.id, { ...valid, notes: "Changed" }, [theirCv]),
+    ).resolves.toEqual({ invalidFields: ["attachments"] });
+
+    expect((await stored(created.id))?.notes).toBe("Changed");
+    expect(await repository.attachedVersions(sessionUser.id, created.id)).toEqual([
+      { documentId: versions.get(cvOriginal)?.documentId, versionId: cvOriginal },
+    ]);
+  });
+
+  it("rejects attachments that are not version ids and changes nothing", async () => {
+    const created = await seed();
+
+    await expect(
+      updateApplication(created.id, { ...valid, notes: "Changed" }, "everything"),
+    ).resolves.toEqual({ invalidFields: ["attachments"] });
+
+    expect(await stored(created.id)).toEqual(created);
   });
 
   it("changes nothing without a session", async () => {

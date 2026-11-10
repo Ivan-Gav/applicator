@@ -29,7 +29,9 @@ export interface DocumentRepository {
 
   /**
    * Deletes the document with its versions, and returns the keys of their
-   * files, which are not deleted with it. None when there was no such document.
+   * files, which are not deleted with it. None when there was no such
+   * document; `null`, deleting nothing, while an application has one of its
+   * versions attached.
    */
-  delete(userId: string, id: string): Promise<StorageKey[]>;
+  delete(userId: string, id: string): Promise<StorageKey[] | null>;
 }

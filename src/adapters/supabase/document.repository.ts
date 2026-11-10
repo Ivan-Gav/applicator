@@ -11,7 +11,8 @@ import { createSupabaseServerClient } from "./client";
 import type { Database } from "./database.types";
 import { toCreateArgs, toDomain, toVersionRow, versionToDomain } from "./document.mapper";
 
-// SQLSTATE foreign_key_violation: the user has no document with that id.
+// SQLSTATE foreign_key_violation: on adding a version, the user has no
+// document with that id; on deleting, an application has a version attached.
 const foreignKeyViolation = "23503";
 
 const documentWithVersions = "*, versions:document_version(*)";
@@ -115,11 +116,15 @@ export class SupabaseDocumentRepository implements DocumentRepository {
     return data.length > 0;
   }
 
-  async delete(userId: string, id: string): Promise<StorageKey[]> {
+  async delete(userId: string, id: string): Promise<StorageKey[] | null> {
     const { data, error } = await this.client.rpc("delete_document", {
       p_user_id: userId,
       p_document_id: id,
     });
+    // The attached version's link restricts the deletion of its row.
+    if (error?.code === foreignKeyViolation) {
+      return null;
+    }
     if (error) {
       throw failure("document delete", error);
     }

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { anApplication } from "@/test/application.fixture";
 import { aDocument, aVersion } from "@/test/document.fixture";
 import { messages } from "@/ui/messages";
 import { documentRowData } from "./document-row-data";
@@ -24,6 +25,8 @@ function rowOf(versions = [revised, original]) {
     aDocument({ id: "d1", title: "CV", type: "cv", language: "de", versions }),
     (id) => `/files/${id}`,
     (id) => `/files/${id}?open`,
+    [],
+    (id) => `/applications/${id}`,
   );
 }
 
@@ -34,6 +37,7 @@ describe("documentRowData", () => {
       type: "cv",
       language: "de",
       withVersions: true,
+      uses: [],
       versions: [
         {
           id: "v2",
@@ -72,5 +76,61 @@ describe("documentRowData", () => {
       rowOf([aVersion({ id: "v2" }), aVersion({ id: "v1" })]).versions.map((v) => v.name),
     ).toEqual([t.numbered(2), t.original]);
     expect(rowOf([original]).withVersions).toBe(false);
+  });
+
+  it("lists the applications holding this document, in the order given, each with the version sent", () => {
+    const acme = anApplication({ id: "a1", companyName: "Acme", status: "interview" });
+    const globex = anApplication({
+      id: "a2",
+      companyName: "Globex",
+      positionTitle: "Lead",
+      status: "rejected",
+      archivedAt: new Date("2026-10-05T09:00:00Z"),
+    });
+    const elsewhere = anApplication({ id: "a3", companyName: "Initech" });
+    const row = documentRowData(
+      aDocument({ id: "d1", versions: [revised, original] }),
+      (id) => `/files/${id}`,
+      (id) => `/files/${id}?open`,
+      [
+        { documentId: "d1", versionId: "v1", application: globex },
+        { documentId: "d9", versionId: "v9", application: elsewhere },
+        { documentId: "d1", versionId: "v2", application: acme },
+      ],
+      (id) => `/applications/${id}`,
+    );
+
+    expect(row.uses).toEqual([
+      {
+        applicationId: "a2",
+        href: "/applications/a2",
+        companyName: "Globex",
+        positionTitle: "Lead",
+        status: "rejected",
+        archived: true,
+        version: t.original,
+      },
+      {
+        applicationId: "a1",
+        href: "/applications/a1",
+        companyName: "Acme",
+        positionTitle: "Engineer",
+        status: "interview",
+        archived: false,
+        version: "ats",
+      },
+    ]);
+  });
+
+  it("names no version sent for a document without versions to tell apart", () => {
+    const row = documentRowData(
+      aDocument({ id: "d1", versions: [original] }),
+      (id) => `/files/${id}`,
+      (id) => `/files/${id}?open`,
+      [{ documentId: "d1", versionId: "v1", application: anApplication() }],
+      (id) => `/applications/${id}`,
+    );
+
+    expect(row.uses.map((use) => use.version)).toEqual([null]);
   });
 });

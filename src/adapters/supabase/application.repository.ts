@@ -1,10 +1,18 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Application, ApplicationStatus, StatusEvent } from "@/domain/application/model";
+import type {
+  Application,
+  ApplicationStatus,
+  AttachedVersion,
+  DocumentUse,
+  StatusEvent,
+} from "@/domain/application/model";
 import type { ApplicationRepository, DistinctValueField } from "@/domain/application/repository";
 import type { CreateApplication, UpdateApplication } from "@/domain/application/schema";
 import { mostCommonFirst } from "@/lib/most-common-first";
 import {
+  attachedVersionToDomain,
   distinctValueColumns,
+  documentUsesToDomain,
   statusEventToDomain,
   toDomain,
   toRow,
@@ -13,6 +21,10 @@ import {
 } from "./application.mapper";
 import { createSupabaseServerClient } from "./client";
 import type { Database } from "./database.types";
+
+// SQLSTATEs replace_application_documents raises for what it refuses.
+const foreignKeyViolation = "23503";
+const uniqueViolation = "23505";
 
 function failure(operation: string, error: { message: string; code?: string }): Error {
   return new Error(`Supabase ${operation} failed: ${error.message}`, { cause: error });
@@ -150,6 +162,51 @@ export class SupabaseApplicationRepository implements ApplicationRepository {
       throw failure("status history", error);
     }
     return data.map(statusEventToDomain);
+  }
+
+  async attachedVersions(userId: string, applicationId: string): Promise<AttachedVersion[]> {
+    const { data, error } = await this.client
+      .from("application_document")
+      .select("document_id, document_version_id")
+      .eq("user_id", userId)
+      .eq("application_id", applicationId)
+      .order("position", { ascending: true });
+    if (error) {
+      throw failure("attached versions", error);
+    }
+    return data.map(attachedVersionToDomain);
+  }
+
+  async replaceAttachedVersions(
+    userId: string,
+    applicationId: string,
+    versionIds: readonly string[],
+  ): Promise<boolean> {
+    const { error } = await this.client.rpc("replace_application_documents", {
+      p_user_id: userId,
+      p_application_id: applicationId,
+      p_version_ids: [...versionIds],
+    });
+    if (error?.code === foreignKeyViolation || error?.code === uniqueViolation) {
+      return false;
+    }
+    if (error) {
+      throw failure("attached versions replace", error);
+    }
+    return true;
+  }
+
+  async listDocumentUses(userId: string): Promise<DocumentUse[]> {
+    const { data, error } = await this.client
+      .from("application")
+      .select("*, attachments:application_document!inner(document_id, document_version_id)")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false });
+    if (error) {
+      throw failure("document uses", error);
+    }
+    return data.flatMap(documentUsesToDomain);
   }
 
   async distinctValues(userId: string, field: DistinctValueField): Promise<string[]> {

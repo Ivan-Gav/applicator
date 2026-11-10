@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDay, isoDay, localDay, readDay, startOfLocalDay } from "./date";
+import { formatDay, formatShortDay, isoDay, localDay, readDay, startOfLocalDay } from "./date";
 
 // Midnight in Berlin (CEST, UTC+2) on 1 September; still 31 August in New York.
 const berlinMidnight = new Date("2026-08-31T22:00:00.000Z");
@@ -21,6 +21,28 @@ describe("formatDay", () => {
   it("shows the day the instant falls on in the given zone", () => {
     expect(formatDay(berlinMidnight, "Europe/Berlin")).toMatch(/^1 Sept? 2026$/);
     expect(formatDay(berlinMidnight, "America/New_York")).toMatch(/^31 Aug 2026$/);
+  });
+});
+
+describe("formatShortDay", () => {
+  const now = new Date("2026-11-08T12:00:00Z");
+
+  it("leaves out the year of the current year", () => {
+    expect(formatShortDay(new Date("2026-09-28T10:00:00Z"), "Europe/Berlin", now)).toMatch(
+      /^28 Sept?$/,
+    );
+  });
+
+  it("adds two digits of any other year", () => {
+    expect(formatShortDay(new Date("2025-09-28T10:00:00Z"), "Europe/Berlin", now)).toMatch(
+      /^28 Sept? 25$/,
+    );
+  });
+
+  it("takes both days and years in the given zone", () => {
+    // 31 December 23:30 in New York is already 1 January in UTC.
+    const newYearsEve = new Date("2027-01-01T04:30:00Z");
+    expect(formatShortDay(newYearsEve, "America/New_York", now)).toBe("31 Dec");
   });
 });
 

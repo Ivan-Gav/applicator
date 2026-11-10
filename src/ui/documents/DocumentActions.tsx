@@ -1,7 +1,7 @@
 "use client";
 
 import { type FormEvent, useId, useState, useTransition } from "react";
-import type { DocumentUploadOutcome } from "@/domain/document/model";
+import { DocumentDeleteFailure, type DocumentUploadOutcome } from "@/domain/document/model";
 import { documentFormField, documentTitleSchema } from "@/domain/document/schema";
 import { cn } from "@/lib/utils";
 import { awaitingHydrationClass, useHydrated } from "@/ui/hooks/use-hydrated";
@@ -35,6 +35,8 @@ import { DownloadIcon } from "@/ui/icons/DownloadIcon";
 import { RenameIcon } from "@/ui/icons/RenameIcon";
 import { VersionAddIcon } from "@/ui/icons/VersionAddIcon";
 import { messages } from "@/ui/messages";
+import type { DocumentUseRow } from "./document-row-data";
+import { InUseDialogContent } from "./InUseDialog";
 import { UploadForm } from "./UploadForm";
 
 /** The actions on one document, bound to it. */
@@ -42,7 +44,8 @@ export type DocumentActionHandlers = {
   addVersion: (form: FormData) => Promise<DocumentUploadOutcome>;
   /** Whether the title was taken. */
   rename: (title: string) => Promise<boolean>;
-  delete: () => Promise<void>;
+  /** Resolves with why nothing was deleted, or null. */
+  delete: () => Promise<DocumentDeleteFailure | null>;
 };
 
 export type DocumentRowActionsProps = {
@@ -51,6 +54,8 @@ export type DocumentRowActionsProps = {
   downloadHref: string;
   /** How many versions go with the document, for the confirmation; null when it has none to tell apart. */
   versionCount: number | null;
+  /** The applications holding the document; while any do, Delete explains why it cannot. */
+  uses: readonly DocumentUseRow[];
   actions: Pick<DocumentActionHandlers, "rename" | "delete">;
 };
 
@@ -62,9 +67,10 @@ export function DocumentRowActions({
   title,
   downloadHref,
   versionCount,
+  uses,
   actions,
 }: DocumentRowActionsProps) {
-  const [failed, setFailed] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
 
   return (
     <div className="flex flex-col items-end gap-1">
@@ -80,13 +86,14 @@ export function DocumentRowActions({
         <DeleteDialog
           title={title}
           versionCount={versionCount}
+          uses={uses}
           remove={actions.delete}
-          onFailure={() => setFailed(true)}
+          onFailure={setFailure}
         />
       </div>
-      {failed && (
+      {failure && (
         <p role="alert" className="text-sm text-destructive">
-          {t.actions.failed}
+          {failure}
         </p>
       )}
     </div>
@@ -226,13 +233,15 @@ function RenameDialog({
 function DeleteDialog({
   title,
   versionCount,
+  uses,
   remove,
   onFailure,
 }: {
   title: string;
   versionCount: number | null;
+  uses: readonly DocumentUseRow[];
   remove: DocumentActionHandlers["delete"];
-  onFailure: () => void;
+  onFailure: (message: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const trigger = useIconTrigger(destructiveIconButtonClass);
@@ -242,9 +251,12 @@ function DeleteDialog({
   function confirm() {
     startDeleting(async () => {
       try {
-        await remove();
+        const refused = await remove();
+        if (refused === DocumentDeleteFailure.InUse) {
+          onFailure(t.actions.inUse);
+        }
       } catch {
-        onFailure();
+        onFailure(t.actions.failed);
       }
       setOpen(false);
     });
@@ -264,27 +276,31 @@ function DeleteDialog({
           </Button>
         </AlertDialogTrigger>
       </IconTooltip>
-      <AlertDialogContent
-        // A click outside cancels, as Cancel does, unless the deletion is under way.
-        onOverlayClick={() => {
-          if (!deleting) {
-            setOpen(false);
-          }
-        }}
-      >
-        <AlertDialogHeader>
-          <AlertDialogTitle>{t.deleteDialog.title}</AlertDialogTitle>
-          <AlertDialogDescription>
-            {t.deleteDialog.description(title, versionCount)}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>{t.deleteDialog.cancel}</AlertDialogCancel>
-          <Button variant="destructive" disabled={deleting} onClick={confirm}>
-            {deleting ? t.deleteDialog.deleting : t.deleteDialog.confirm}
-          </Button>
-        </AlertDialogFooter>
-      </AlertDialogContent>
+      {uses.length > 0 ? (
+        <InUseDialogContent title={title} uses={uses} onClose={() => setOpen(false)} />
+      ) : (
+        <AlertDialogContent
+          // A click outside cancels, as Cancel does, unless the deletion is under way.
+          onOverlayClick={() => {
+            if (!deleting) {
+              setOpen(false);
+            }
+          }}
+        >
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t.deleteDialog.title}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t.deleteDialog.description(title, versionCount)}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t.deleteDialog.cancel}</AlertDialogCancel>
+            <Button variant="destructive" disabled={deleting} onClick={confirm}>
+              {deleting ? t.deleteDialog.deleting : t.deleteDialog.confirm}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      )}
     </AlertDialog>
   );
 }

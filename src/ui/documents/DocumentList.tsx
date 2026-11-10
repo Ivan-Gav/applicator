@@ -1,7 +1,9 @@
 import Link from "next/link";
+import type { DocumentUse } from "@/domain/application/model";
 import { DocumentSort } from "@/domain/document/list";
 import type {
   Document,
+  DocumentDeleteFailure,
   DocumentLanguage,
   DocumentType,
   DocumentUploadOutcome,
@@ -15,14 +17,15 @@ import { SortableHead, type SortLink } from "@/ui/SortableHead";
 import { DocumentRow } from "./DocumentRow";
 import { documentRowData } from "./document-row-data";
 import { TypeSwatch } from "./TypeTag";
-import { UploadDocumentDialog } from "./UploadDocumentDialog";
+import { type UploadDocument, UploadDocumentDialog } from "./UploadDocumentDialog";
 
 /** The document actions, each taking the document it acts on first. */
 export type DocumentListActions = {
-  upload: (form: FormData) => Promise<DocumentUploadOutcome>;
+  upload: UploadDocument;
   addVersion: (documentId: string, form: FormData) => Promise<DocumentUploadOutcome>;
   rename: (documentId: string, title: string) => Promise<boolean>;
-  delete: (documentId: string) => Promise<void>;
+  /** Resolves with why nothing was deleted, or null. */
+  delete: (documentId: string) => Promise<DocumentDeleteFailure | null>;
 };
 
 /** Search, filters and counts; absent while there is no document at all. */
@@ -55,6 +58,10 @@ export type DocumentListProps = {
   fileHref: (versionId: string) => string;
   /** Where a version's file is opened from; formats browsers cannot show are saved instead. */
   fileOpenHref: (versionId: string) => string;
+  /** Every attached version with its application, the newest application first. */
+  uses: readonly DocumentUse[];
+  /** The page of an application. */
+  applicationHref: (applicationId: string) => string;
   // The viewer's zone; dates show the day they fall on there.
   timeZone: string;
   actions: DocumentListActions;
@@ -70,6 +77,8 @@ export function DocumentList({
   showMoreHref,
   fileHref,
   fileOpenHref,
+  uses,
+  applicationHref,
   timeZone,
   actions,
 }: DocumentListProps) {
@@ -145,7 +154,7 @@ export function DocumentList({
                 <DocumentRow
                   // Changes with a new version, which then starts out chosen.
                   key={`${document.id}:${document.versions[0]?.id}`}
-                  row={documentRowData(document, fileHref, fileOpenHref)}
+                  row={documentRowData(document, fileHref, fileOpenHref, uses, applicationHref)}
                   timeZone={timeZone}
                   // Bound here: a client component receives server actions, not closures.
                   actions={{

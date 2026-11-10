@@ -111,3 +111,17 @@ export const StatusChangeFailure = {
   Outdated: "outdated",
 } as const;
 export type StatusChangeFailure = (typeof StatusChangeFailure)[keyof typeof StatusChangeFailure];
+
+/**
+ * A document attached to an application, naming the version that was sent.
+ * Stored as given: a newer version of the document leaves it as it is.
+ */
+export type AttachedVersion = {
+  documentId: string;
+  versionId: string;
+};
+
+/** A document version attached to an application, with that application. */
+export type DocumentUse = AttachedVersion & {
+  application: Application;
+};

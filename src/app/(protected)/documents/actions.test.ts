@@ -6,7 +6,7 @@ import { documentStorageForRequest } from "@/adapters/supabase/document.storage"
 import { requireUser } from "@/app/auth/_utils/require-user";
 import { routes, signInPath } from "@/app/routes";
 import { maxDocumentFileBytes } from "@/domain/document/format";
-import { DocumentUploadFailure } from "@/domain/document/model";
+import { DocumentDeleteFailure, DocumentUploadFailure } from "@/domain/document/model";
 import { documentFormField } from "@/domain/document/schema";
 import { InMemoryDocumentRepository } from "@/test/in-memory-document.repository";
 import { InMemoryDocumentStorage } from "@/test/in-memory-document.storage";
@@ -51,9 +51,12 @@ const details = { [f.type]: "cv", [f.title]: "CV, English", [f.language]: "en", 
 
 let repository: InMemoryDocumentRepository;
 let storage: InMemoryDocumentStorage;
+// Versions some application has attached.
+let attachedVersionIds: Set<string>;
 
 beforeEach(() => {
-  repository = new InMemoryDocumentRepository();
+  attachedVersionIds = new Set();
+  repository = new InMemoryDocumentRepository(undefined, () => attachedVersionIds);
   storage = new InMemoryDocumentStorage();
   vi.mocked(documentRepositoryForRequest).mockResolvedValue(repository);
   vi.mocked(documentStorageForRequest).mockResolvedValue(storage);
@@ -79,17 +82,16 @@ async function uploaded(owner = sessionUser.id) {
 }
 
 describe("uploadDocument", () => {
-  it("stores the file under a generated key, then a document naming it", async () => {
-    await expect(
-      uploadDocument(
-        form({ ...details, [f.file]: pdf("Lebenslauf (final).pdf"), [f.label]: "short" }),
-      ),
-    ).resolves.toEqual({ failure: null });
+  it("stores the file under a generated key, then a document naming it, and answers with its id", async () => {
+    const outcome = await uploadDocument(
+      form({ ...details, [f.file]: pdf("Lebenslauf (final).pdf"), [f.label]: "short" }),
+    );
 
     const [key] = storage.keys();
     expect(key).toMatch(new RegExp(`^${sessionUser.id}/[0-9a-f-]{36}$`));
     expect(storage.get(key ?? "")?.mediaType).toBe("application/pdf");
     const [entry] = repository.all();
+    expect(outcome).toEqual({ failure: null, documentId: entry?.document.id });
     expect(entry?.userId).toBe(sessionUser.id);
     expect(entry?.document).toMatchObject({
       type: "cv",
@@ -286,7 +288,7 @@ describe("deleteDocument", () => {
     const remove = vi.spyOn(storage, "remove").mockRejectedValue(new Error("storage down"));
     const logged = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    await expect(deleteDocument(document.id)).resolves.toBeUndefined();
+    await expect(deleteDocument(document.id)).resolves.toBeNull();
     await expect(afterResponse()).resolves.toBeUndefined();
 
     expect(await repository.find(sessionUser.id, document.id)).toBeNull();
@@ -310,7 +312,18 @@ describe("deleteDocument", () => {
   });
 
   it("ignores an unknown document", async () => {
-    await expect(deleteDocument(missingId)).resolves.toBeUndefined();
+    await expect(deleteDocument(missingId)).resolves.toBeNull();
+  });
+
+  it("refuses, keeping rows and files, while an application has a version attached", async () => {
+    const document = await uploaded();
+    attachedVersionIds.add(document.versions[0]?.id ?? "");
+
+    await expect(deleteDocument(document.id)).resolves.toBe(DocumentDeleteFailure.InUse);
+
+    expect(after).not.toHaveBeenCalled();
+    expect(await repository.find(sessionUser.id, document.id)).not.toBeNull();
+    expect(storage.keys()).toHaveLength(1);
   });
 
   it("deletes nothing without a session", async () => {

@@ -1,6 +1,8 @@
 import {
   type Application,
   applicationStatuses,
+  type AttachedVersion,
+  type DocumentUse,
   type StatusEvent,
   channels,
   salaryPeriods,
@@ -164,4 +166,25 @@ export function statusEventToDomain(row: StatusEventRow): StatusEvent {
     status: oneOf(applicationStatuses, row.status, "status_event.status"),
     occurredAt: new Date(row.occurred_at),
   };
+}
+
+export type ApplicationDocumentRow = Tables<"application_document">;
+export type ApplicationWithAttachmentsRow = ApplicationRow & {
+  attachments: Pick<ApplicationDocumentRow, "document_id" | "document_version_id">[];
+};
+
+export function attachedVersionToDomain(
+  row: Pick<ApplicationDocumentRow, "document_id" | "document_version_id">,
+): AttachedVersion {
+  return { documentId: row.document_id, versionId: row.document_version_id };
+}
+
+/** One use per attachment of the application, in no particular order. */
+export function documentUsesToDomain(row: ApplicationWithAttachmentsRow): DocumentUse[] {
+  const { attachments, ...application } = row;
+  const shared = toDomain(application);
+  return attachments.map((attachment) => ({
+    ...attachedVersionToDomain(attachment),
+    application: shared,
+  }));
 }

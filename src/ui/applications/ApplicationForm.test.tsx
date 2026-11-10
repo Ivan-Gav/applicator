@@ -52,7 +52,7 @@ function renderForm(
   application?: Application,
 ) {
   const createApplication =
-    vi.fn<(input: CreateApplication) => Promise<ApplicationRejection>>(outcome);
+    vi.fn<(input: CreateApplication, attached: string[]) => Promise<ApplicationRejection>>(outcome);
   render(
     <>
       <ApplicationForm
@@ -62,6 +62,8 @@ function renderForm(
         sourceSearch={sourceSearch}
         application={application}
         jsonFormatHref={jsonFormatHref}
+        documents={[]}
+        uploadDocument={vi.fn()}
       />
       <Toaster />
     </>,
@@ -266,6 +268,8 @@ describe("ApplicationForm before hydration", () => {
         backHref="/list"
         citySearch={citySearch}
         sourceSearch={sourceSearch}
+        documents={[]}
+        uploadDocument={vi.fn()}
       />,
     );
 

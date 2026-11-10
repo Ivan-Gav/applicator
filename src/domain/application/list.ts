@@ -96,6 +96,17 @@ export function matchesSearch(
   );
 }
 
+/** In company or position, ignoring case; blank text matches everything. */
+export function matchesCompanyOrPosition(
+  application: Pick<Application, "companyName" | "positionTitle">,
+  text: string,
+): boolean {
+  const wanted = text.trim().toLocaleLowerCase();
+  return [application.companyName, application.positionTitle].some((field) =>
+    field.toLocaleLowerCase().includes(wanted),
+  );
+}
+
 /** Whether an application passes every filter of `query`; prepared once for a whole view. */
 export function applicationFilter(
   query: ApplicationListQuery,
