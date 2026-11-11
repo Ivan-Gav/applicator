@@ -1,3 +1,4 @@
+import { wholeDaysBetween } from "@/lib/date";
 import {
   type Application,
   type ApplicationStatus,
@@ -22,8 +23,6 @@ const likelyTransitions: Readonly<Record<ApplicationStatus, readonly Application
 
 // The application is over, for now: nothing is awaited from either side.
 const closedStatuses: readonly ApplicationStatus[] = ["rejected", "withdrawn"];
-
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 export function isLikelyTransition(from: ApplicationStatus, to: ApplicationStatus): boolean {
   return likelyTransitions[from].includes(to);
@@ -63,8 +62,11 @@ export function statusTransition(
   };
 }
 
+/** The fields {@link daysWithoutResponse} reads. */
+export type WaitingFields = Pick<Application, "status" | "appliedAt" | "lastContactAt">;
+
 /** `null` for an application never sent and for a closed one. */
-export function daysWithoutResponse(application: Application, now: Date): number | null {
+export function daysWithoutResponse(application: WaitingFields, now: Date): number | null {
   if (isClosedStatus(application.status)) {
     return null;
   }
@@ -74,8 +76,7 @@ export function daysWithoutResponse(application: Application, now: Date): number
     return null;
   }
 
-  const elapsedDays = Math.floor((now.getTime() - since.getTime()) / MS_PER_DAY);
-  return Math.max(0, elapsedDays);
+  return Math.max(0, wholeDaysBetween(since, now));
 }
 
 export function salaryRangeShape({ min, max }: SalaryRange): SalaryRangeShape {

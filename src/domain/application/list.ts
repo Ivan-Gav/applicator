@@ -2,7 +2,7 @@ import { alternateNameMatches, type CityIndex } from "@/domain/city/search";
 import { normalizeForSearch } from "@/lib/normalize-for-search";
 import { SortDirection } from "@/lib/sort-direction";
 import { type Application, type ApplicationStatus, applicationStatuses } from "./model";
-import { daysWithoutResponse } from "./rules";
+import { daysWithoutResponse, type WaitingFields } from "./rules";
 
 // What the list can be ordered by.
 export const ApplicationSort = {
@@ -59,7 +59,7 @@ export function isFiltered(query: ApplicationListQuery): boolean {
   );
 }
 
-export function waitsLong(application: Application, now: Date): boolean {
+export function waitsLong(application: WaitingFields, now: Date): boolean {
   const days = daysWithoutResponse(application, now);
   return days !== null && days >= longWaitDays;
 }

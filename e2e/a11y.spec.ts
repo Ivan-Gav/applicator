@@ -75,6 +75,23 @@ test.describe("with a stored session", () => {
     expect(results.violations).toEqual([]);
   });
 
+  test("dashboard has no accessibility violations", async ({ page }) => {
+    await seedApplication(page.request, {
+      companyName: uniqueCompany("Dashboard Corp"),
+      positionTitle: "Engineer",
+      status: "applied",
+      appliedAt: new Date("2026-08-31T22:00:00.000Z"),
+      source: "LinkedIn",
+      city: "Berlin",
+    });
+    await page.goto(routes.dashboard);
+    await expect(
+      page.getByRole("region", { name: messages.dashboard.summary.title }),
+    ).toBeVisible();
+
+    await expectNoViolations(page);
+  });
+
   test("applications list has no accessibility violations", async ({ page }) => {
     await seedApplication(page.request, {
       companyName: uniqueCompany("Axe Corp"),
@@ -133,6 +150,22 @@ test.describe("with a stored session", () => {
       await page.goto(routes.applications);
       await expect(page.locator("html")).toHaveClass(/(^|\s)dark(\s|$)/);
       await expect(page.getByRole("table", { name: t.title })).toBeVisible();
+
+      await expectNoViolations(page);
+    });
+
+    test("dashboard has no accessibility violations", async ({ page }) => {
+      await seedApplication(page.request, {
+        companyName: uniqueCompany("Dark Dashboard Corp"),
+        positionTitle: "Engineer",
+        status: "interview",
+        appliedAt: new Date("2026-08-31T22:00:00.000Z"),
+      });
+      await page.goto(routes.dashboard);
+      await expect(page.locator("html")).toHaveClass(/(^|\s)dark(\s|$)/);
+      await expect(
+        page.getByRole("region", { name: messages.dashboard.summary.title }),
+      ).toBeVisible();
 
       await expectNoViolations(page);
     });

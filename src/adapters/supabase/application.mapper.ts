@@ -1,5 +1,6 @@
 import {
   type Application,
+  type ApplicationWithHistory,
   applicationStatuses,
   type AttachedVersion,
   type DocumentUse,
@@ -161,11 +162,26 @@ export function toStatusTransitionRow(moved: Application): ApplicationUpdateRow 
   };
 }
 
-export function statusEventToDomain(row: StatusEventRow): StatusEvent {
+/** The columns of a status event the domain reads. */
+export type StatusEventFields = Pick<StatusEventRow, "status" | "occurred_at">;
+
+export function statusEventToDomain(row: StatusEventFields): StatusEvent {
   return {
     status: oneOf(applicationStatuses, row.status, "status_event.status"),
     occurredAt: new Date(row.occurred_at),
   };
+}
+
+export type ApplicationWithHistoryRow = ApplicationRow & {
+  status_event: StatusEventFields[];
+};
+
+/** The application and its history, in the order the rows came. */
+export function applicationWithHistoryToDomain(
+  row: ApplicationWithHistoryRow,
+): ApplicationWithHistory {
+  const { status_event: events, ...application } = row;
+  return { application: toDomain(application), history: events.map(statusEventToDomain) };
 }
 
 export type ApplicationDocumentRow = Tables<"application_document">;

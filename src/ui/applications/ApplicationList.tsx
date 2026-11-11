@@ -6,6 +6,12 @@ import { Button } from "@/ui/kit/button";
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/ui/kit/table";
 import { SortableHead, type SortLink } from "@/ui/SortableHead";
 import { messages } from "@/ui/messages";
+import {
+  segmentedItemClass,
+  segmentedItemOffClass,
+  segmentedItemOnClass,
+  segmentedTrackClass,
+} from "@/ui/segmented";
 import { ApplicationFilters, type ApplicationFiltersProps } from "./ApplicationFilters";
 import { ApplicationRow, type ApplicationRowActions } from "./ApplicationRow";
 import { ListSearch, type ListSearchQuery } from "@/ui/ListSearch";
@@ -66,7 +72,7 @@ export function ApplicationList({
   return (
     <div className="flex flex-col gap-4.5">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <nav aria-label={t.views.label} className="flex gap-0.5 rounded-lg bg-muted p-0.75">
+        <nav aria-label={t.views.label} className={segmentedTrackClass}>
           {[
             { href: activeHref, label: t.views.active, current: !archived },
             { href: archivedHref, label: t.views.archived, current: archived },
@@ -76,10 +82,8 @@ export function ApplicationList({
               href={href}
               aria-current={current ? "page" : undefined}
               className={cn(
-                "rounded-[3px] px-3.5 py-1.25 text-sm",
-                current
-                  ? "bg-card font-semibold text-foreground"
-                  : "text-muted-foreground hover:text-foreground",
+                segmentedItemClass,
+                current ? segmentedItemOnClass : segmentedItemOffClass,
               )}
             >
               {label}

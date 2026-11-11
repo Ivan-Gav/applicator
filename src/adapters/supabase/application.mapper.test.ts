@@ -5,6 +5,7 @@ import {
   type ApplicationInsertRow,
   type ApplicationRow,
   type StatusEventRow,
+  applicationWithHistoryToDomain,
   attachedVersionToDomain,
   documentUsesToDomain,
   statusEventToDomain,
@@ -444,5 +445,26 @@ describe("documentUsesToDomain", () => {
       { documentId: "d1", versionId: "e1", application: toDomain(fullRow) },
       { documentId: "d2", versionId: "e2", application: toDomain(fullRow) },
     ]);
+  });
+});
+
+describe("applicationWithHistoryToDomain", () => {
+  it("maps the application and its events in the order given, leaving the embedded rows out", () => {
+    const mapped = applicationWithHistoryToDomain({
+      ...fullRow,
+      status_event: [
+        { status: "applied", occurred_at: "2026-09-01T10:00:00+00:00" },
+        { status: "interview", occurred_at: "2026-09-10T08:00:00+00:00" },
+      ],
+    });
+
+    expect(mapped).toEqual({
+      application: toDomain(fullRow),
+      history: [
+        { status: "applied", occurredAt: new Date("2026-09-01T10:00:00.000Z") },
+        { status: "interview", occurredAt: new Date("2026-09-10T08:00:00.000Z") },
+      ],
+    });
+    expect(mapped.application).not.toHaveProperty("status_event");
   });
 });

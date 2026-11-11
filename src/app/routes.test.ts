@@ -6,6 +6,12 @@ import {
   firstDirection,
   SortDirection,
 } from "@/domain/application/list";
+import {
+  ChartSeries,
+  ChartStep,
+  DashboardRange,
+  defaultDashboardQuery,
+} from "@/domain/application/dashboard";
 import { DocumentSort, defaultDocumentListQuery } from "@/domain/document/list";
 import { SignInFailureReason } from "@/domain/user/model";
 import {
@@ -18,6 +24,9 @@ import {
   applicationsPath,
   applicationsSearchParam,
   applicationsViewOf,
+  dashboardPath,
+  dashboardQueryOf,
+  dashboardSearchParam,
   documentFileOpenParam,
   documentFileOpenPath,
   documentFilePath,
@@ -271,6 +280,70 @@ describe("documentsListStateOf", () => {
     ).toEqual({
       query: { ...defaultDocumentListQuery, types: ["cv"], languages: ["en"] },
       shown: documentsPageSize,
+    });
+  });
+});
+
+describe("dashboardPath and dashboardQueryOf", () => {
+  function queryOf(path: string) {
+    return dashboardQueryOf(pageSearchParams(parse(path).searchParams));
+  }
+
+  it("is the bare route for the default query, which reads back as the default", () => {
+    expect(dashboardPath()).toBe(routes.dashboard);
+    expect(queryOf(routes.dashboard)).toEqual(defaultDashboardQuery);
+  });
+
+  it("reads back every part of a path it built", () => {
+    const query = {
+      range: DashboardRange.Custom,
+      from: "2026-08-10",
+      to: "2026-11-10",
+      step: ChartStep.Month,
+      lines: [ChartSeries.Screening, ChartSeries.Offers],
+      includeArchived: true,
+    };
+
+    expect(queryOf(dashboardPath(query))).toEqual(query);
+  });
+
+  it("keeps the days of a range that is not custom out of the path", () => {
+    const path = dashboardPath({
+      ...defaultDashboardQuery,
+      range: DashboardRange.Last30Days,
+      from: "2026-08-10",
+    });
+
+    expect(parse(path).searchParams.has(dashboardSearchParam.from)).toBe(false);
+    expect(queryOf(path)).toEqual({ ...defaultDashboardQuery, range: DashboardRange.Last30Days });
+  });
+
+  it("tells no line chosen from the default lines", () => {
+    const none = dashboardPath({ ...defaultDashboardQuery, lines: [] });
+
+    expect(parse(none).searchParams.get(dashboardSearchParam.lines)).toBe("");
+    expect(queryOf(none).lines).toEqual([]);
+  });
+
+  it("writes the lines in the order they are offered, whatever order they were chosen in", () => {
+    const path = dashboardPath({
+      ...defaultDashboardQuery,
+      lines: [ChartSeries.Rejections, ChartSeries.Interviews, ChartSeries.Sent],
+    });
+
+    expect(path).toBe(routes.dashboard);
+  });
+
+  it("ignores what it does not know, and a day that is not one", () => {
+    expect(
+      queryOf(
+        `${routes.dashboard}?range=week&step=year&lines=sent,ghosted&archived=yes&from=2026-02-30`,
+      ),
+    ).toEqual({ ...defaultDashboardQuery, lines: [ChartSeries.Sent] });
+    expect(queryOf(`${routes.dashboard}?range=custom&from=yesterday&to=2026-11-01`)).toEqual({
+      ...defaultDashboardQuery,
+      range: DashboardRange.Custom,
+      to: "2026-11-01",
     });
   });
 });

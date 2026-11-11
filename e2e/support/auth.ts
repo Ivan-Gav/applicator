@@ -8,6 +8,7 @@ import { authCallbackPath, isAt } from "./urls";
 export const authStateFile = path.resolve("e2e/.auth/user.json");
 export const applicationsStateFile = path.resolve("e2e/.auth/applications-user.json");
 export const documentsStateFile = path.resolve("e2e/.auth/documents-user.json");
+export const dashboardStateFile = path.resolve("e2e/.auth/dashboard-user.json");
 
 // One address per scenario that mints its own link: generating a link replaces
 // the previous token for that address, so two workers sharing an address would
@@ -17,6 +18,8 @@ export const sharedUser = { email: "e2e@applicator.test" };
 export const applicationsUser = { email: "e2e-applications@applicator.test" };
 // Owns the documents journey, which needs to start from an empty list.
 export const documentsUser = { email: "e2e-documents@applicator.test" };
+// Owns the dashboard, whose numbers need applications of its own only.
+export const dashboardUser = { email: "e2e-dashboard@applicator.test" };
 export const formUser = { email: "e2e-form@applicator.test" };
 export const signOutUser = { email: "e2e-sign-out@applicator.test" };
 export const expiredSessionUser = { email: "e2e-expired-session@applicator.test" };

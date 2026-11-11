@@ -9,6 +9,7 @@ import { AppHeader } from "@/ui/shell/AppHeader";
 const navItems = [
   { href: routes.applications, label: messages.nav.applications },
   { href: routes.documents, label: messages.nav.documents },
+  { href: routes.dashboard, label: messages.nav.dashboard },
 ];
 
 // Protects every page in this group. Route handlers and server actions are not

@@ -1,6 +1,7 @@
 import type {
   Application,
   ApplicationStatus,
+  ApplicationWithHistory,
   AttachedVersion,
   DocumentUse,
   StatusEvent,
@@ -20,6 +21,9 @@ export interface ApplicationRepository {
 
   /** Archived applications, most recently created first. */
   listArchived(userId: string): Promise<Application[]>;
+
+  /** Every application, archived ones included, each with its status history; most recently created first. */
+  listWithStatusHistory(userId: string): Promise<ApplicationWithHistory[]>;
 
   find(userId: string, id: string): Promise<Application | null>;
 

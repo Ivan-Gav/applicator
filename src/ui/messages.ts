@@ -9,6 +9,7 @@ import {
   StatusChangeFailure,
   type WorkMode,
 } from "@/domain/application/model";
+import { ChartSeries, ChartStep, DashboardRange } from "@/domain/application/dashboard";
 import { JsonReadFailure } from "@/domain/application/json";
 import type { SortDirection } from "@/domain/application/list";
 import type { DocumentFormat } from "@/domain/document/format";
@@ -39,6 +40,7 @@ export const messages = {
     label: "Main",
     applications: "Applications",
     documents: "Documents",
+    dashboard: "Dashboard",
     signOut: "Sign out",
     darkTheme: "Dark theme",
   },
@@ -576,6 +578,102 @@ export const messages = {
       confirm: "Delete permanently",
       deleting: "Deleting…",
       cancel: "Cancel",
+    },
+  },
+
+  dashboard: {
+    title: "Dashboard",
+    period: {
+      label: "Period",
+      ranges: {
+        [DashboardRange.All]: "All time",
+        [DashboardRange.Last30Days]: "Last 30 days",
+        [DashboardRange.Last90Days]: "Last 90 days",
+      },
+      from: "From",
+      to: "to",
+      includeArchived: "Include archived",
+      // "10 Aug 2026 – 10 Nov 2026"
+      span: (from: string, to: string) => `${from} – ${to}`,
+    },
+    summary: {
+      title: "Summary",
+      applications: (count: number) => (count === 1 ? "application" : "applications"),
+      sentAndDrafts: (sent: number, drafts: number) =>
+        `${sent} sent, ${drafts} ${drafts === 1 ? "draft" : "drafts"}`,
+      statuses: "Current status",
+      share: (percent: number) => `${percent}%`,
+    },
+    firstResponse: {
+      title: "First response",
+      median: "Median",
+      days: (count: number) => (count === 1 ? "day" : "days"),
+      answers: (count: number) => (count === 1 ? "from 1 answer" : `from ${count} answers`),
+      none: "No answers yet",
+    },
+    overTime: {
+      title: "Over time",
+      steps: {
+        label: "Step",
+        [ChartStep.Day]: "Day",
+        [ChartStep.Week]: "Week",
+        [ChartStep.Month]: "Month",
+      },
+      // Why a step is not offered: the whole period is one of its buckets.
+      stepTooLong: {
+        [ChartStep.Day]: "The period fits in one day: pick a shorter step",
+        [ChartStep.Week]: "The period fits in one week: pick a shorter step",
+        [ChartStep.Month]: "The period fits in one month: pick a shorter step",
+      } satisfies Record<ChartStep, string>,
+      lines: "Lines shown",
+      series: {
+        [ChartSeries.Sent]: "Sent",
+        [ChartSeries.Screening]: "Screening",
+        [ChartSeries.Assignments]: "Assignments",
+        [ChartSeries.Interviews]: "Interviews",
+        [ChartSeries.Offers]: "Offers",
+        [ChartSeries.Rejections]: "Rejections",
+        [ChartSeries.Withdrawn]: "Withdrawn",
+      } satisfies Record<ChartSeries, string>,
+      yAxis: "Applications",
+      xAxis: {
+        [ChartStep.Day]: "Day",
+        [ChartStep.Week]: "Week starting",
+        [ChartStep.Month]: "Month",
+      } satisfies Record<ChartStep, string>,
+      // The chart's accessible name: "Events per week: Sent 98, Interviews 12".
+      description: (step: ChartStep, totals: readonly { label: string; total: number }[]) =>
+        `Events per ${step}: ${totals.map(({ label, total }) => `${label} ${total}`).join(", ")}`,
+      tableCaption: "Events per period",
+      noLines: "Choose at least one line above.",
+    },
+    waiting: {
+      title: "Waiting now",
+      sortButton: "Applied",
+      sortLabel: {
+        asc: "Sorted by date applied, oldest first. Reverse",
+        desc: "Sorted by date applied, newest first. Reverse",
+      } satisfies Record<SortDirection, string>,
+      open: "open",
+      long: (days: number) => `over ${days} days`,
+      rowLabel: ({ companyName, positionTitle }: { companyName: string; positionTitle: string }) =>
+        `Open ${positionTitle} at ${companyName}`,
+      all: (count: number) => `All ${count} on the applications list`,
+      none: "Nothing is waiting for an answer.",
+    },
+    breakdown: {
+      bySource: "By source",
+      byCountry: "By country",
+      byCity: "By city",
+      sources: (count: number) => (count === 1 ? "source" : "sources"),
+      countries: (count: number) => (count === 1 ? "country" : "countries"),
+      cities: (count: number) => (count === 1 ? "city" : "cities"),
+      notSpecified: "Not specified",
+      otherCities: (count: number) => `Other: ${count} cities`,
+      showAll: (count: number) => `Show all ${count}`,
+      showFewer: "Show fewer",
+      // A row's tooltip: "LinkedIn: 34".
+      rowTitle: (label: string, count: number) => `${label}: ${count}`,
     },
   },
 

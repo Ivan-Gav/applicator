@@ -1,0 +1,29 @@
+/* Chart colours: constants of the dashboard, deliberately not theme tokens. */
+
+.palette {
+  --series-sent: #266210;
+  --series-screening: #3f7a24;
+  --series-assignments: #5c8b12;
+  --series-interviews: #7a9c00;
+  --series-offers: #a39a00;
+  --series-rejections: #8e948a;
+  --series-withdrawn: #a09f96;
+  --series-rest: #8e948a;
+}
+
+:global(.dark) .palette {
+  --series-sent: #b7d69a;
+  --series-screening: #5e9e1e;
+  --series-assignments: #77ab0f;
+  --series-interviews: #90b800;
+  --series-offers: #e1e100;
+  --series-rejections: #8a9086;
+  --series-withdrawn: #5f625c;
+  --series-rest: #727870;
+}
+
+/* "Other" and "Not specified": hatched, with a 1px outline inside. */
+.hatched {
+  background: repeating-linear-gradient(135deg, var(--series-rest) 0 3px, transparent 3px 6px);
+  box-shadow: inset 0 0 0 1px var(--series-rest);
+}

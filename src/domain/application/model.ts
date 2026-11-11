@@ -103,6 +103,12 @@ export type StatusEvent = {
   occurredAt: Date;
 };
 
+/** An application with every status it has held, oldest first. */
+export type ApplicationWithHistory = {
+  application: Application;
+  history: StatusEvent[];
+};
+
 // Why a status change was refused.
 export const StatusChangeFailure = {
   // The request does not describe a status change.

@@ -2,6 +2,7 @@ import type { APIRequestContext } from "@playwright/test";
 import { toRow } from "@/adapters/supabase/application.mapper";
 import { createServiceRoleClient } from "@/adapters/supabase/service-role.client";
 import { routes } from "@/app/routes";
+import type { ApplicationStatus } from "@/domain/application/model";
 import { type CreateApplicationInput, createApplicationSchema } from "@/domain/application/schema";
 
 /** The id of the user whose session `request` carries. */
@@ -71,6 +72,39 @@ export async function seedApplications(
   const { error } = await createServiceRoleClient()
     .from("application")
     .insert(inputs.map((input) => toRow(userId, createApplicationSchema.parse(input))));
+  if (error) {
+    throw error;
+  }
+}
+
+/**
+ * Moves an application to `status` at `at`, as a status change in the app
+ * does: the database journals it, and it counts as the last contact.
+ */
+export async function moveApplication(
+  id: string,
+  status: ApplicationStatus,
+  at: Date,
+): Promise<void> {
+  const { error } = await createServiceRoleClient()
+    .from("application")
+    .update({
+      status,
+      status_changed_at: at.toISOString(),
+      last_contact_at: at.toISOString(),
+    })
+    .eq("id", id);
+  if (error) {
+    throw error;
+  }
+}
+
+/** Archives an application, whoever owns it. */
+export async function archiveApplicationById(id: string, at: Date): Promise<void> {
+  const { error } = await createServiceRoleClient()
+    .from("application")
+    .update({ archived_at: at.toISOString() })
+    .eq("id", id);
   if (error) {
     throw error;
   }

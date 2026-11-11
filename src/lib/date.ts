@@ -1,3 +1,4 @@
+import { dayInZone } from "./calendar-day";
 import { normalizeForSearch } from "./normalize-for-search";
 
 const dayPattern = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -40,15 +41,14 @@ export function formatShortDay(instant: Date, timeZone: string, now: Date): stri
 
 /** The day of an instant in `timeZone` as YYYY-MM-DD, e.g. for <time dateTime>. */
 export function isoDay(instant: Date, timeZone: string): string {
-  const parts = new Intl.DateTimeFormat("en", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(instant);
-  const part = (type: Intl.DateTimeFormatPartTypes) =>
-    parts.find((candidate) => candidate.type === type)?.value;
-  return `${part("year")}-${part("month")}-${part("day")}`;
+  return dayInZone(timeZone)(instant);
+}
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+/** Whole days elapsed from `from` to `to`, rounded down; negative when `to` is earlier. */
+export function wholeDaysBetween(from: Date, to: Date): number {
+  return Math.floor((to.getTime() - from.getTime()) / MS_PER_DAY);
 }
 
 /** The day of an instant in this runtime's time zone as YYYY-MM-DD; the inverse of startOfLocalDay. */

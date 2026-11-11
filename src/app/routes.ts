@@ -4,6 +4,13 @@ import {
   defaultListQuery,
   SortDirection,
 } from "@/domain/application/list";
+import {
+  ChartStep,
+  chartSeries,
+  DashboardRange,
+  type DashboardQuery,
+  defaultDashboardQuery,
+} from "@/domain/application/dashboard";
 import { applicationStatuses } from "@/domain/application/model";
 import {
   type DocumentListQuery,
@@ -12,6 +19,7 @@ import {
 } from "@/domain/document/list";
 import { documentLanguages, documentTypes } from "@/domain/document/model";
 import type { SignInFailureReason } from "@/domain/user/model";
+import { isCalendarDay } from "@/lib/calendar-day";
 import { sameSitePath } from "@/lib/same-site-path";
 
 export const routes = {
@@ -21,6 +29,7 @@ export const routes = {
   applications: "/applications",
   newApplication: "/applications/new",
   documents: "/documents",
+  dashboard: "/dashboard",
   apiMe: "/api/me",
   apiCities: "/api/cities",
   apiSources: "/api/sources",
@@ -251,6 +260,78 @@ function oneOf<T extends string>(values: readonly T[], value: unknown): T | unde
 /** The view a list request asks for; anything unknown is the active view. */
 export function applicationsViewOf(value: unknown): ApplicationsView {
   return value === ApplicationsView.Archived ? ApplicationsView.Archived : ApplicationsView.Active;
+}
+
+export const dashboardSearchParam = {
+  range: "range",
+  // YYYY-MM-DD, days in the viewer's time zone; written for a custom range only.
+  from: "from",
+  to: "to",
+  step: "step",
+  // Comma-separated, e.g. "sent,iv"; present and empty when no line is chosen.
+  lines: "lines",
+  archived: "archived",
+} as const;
+
+// The value of `archived` that counts archived applications too.
+export const includeArchivedParam = "include";
+
+/** The dashboard as `query` describes it; defaults stay out of the URL. */
+export function dashboardPath(query: DashboardQuery = defaultDashboardQuery): string {
+  const p = dashboardSearchParam;
+  const params = new URLSearchParams();
+  if (query.range !== defaultDashboardQuery.range) {
+    params.set(p.range, query.range);
+  }
+  if (query.range === DashboardRange.Custom) {
+    if (query.from) {
+      params.set(p.from, query.from);
+    }
+    if (query.to) {
+      params.set(p.to, query.to);
+    }
+  }
+  if (query.step !== defaultDashboardQuery.step) {
+    params.set(p.step, query.step);
+  }
+  const lines = chartSeries.filter((series) => query.lines.includes(series));
+  const defaultLines = chartSeries.filter((series) => defaultDashboardQuery.lines.includes(series));
+  if (lines.join(",") !== defaultLines.join(",")) {
+    params.set(p.lines, lines.join(","));
+  }
+  if (query.includeArchived) {
+    params.set(p.archived, includeArchivedParam);
+  }
+  const search = params.toString();
+  return search ? `${routes.dashboard}?${search}` : routes.dashboard;
+}
+
+/** What a dashboard request asks for. Anything unknown or malformed falls back to the default. */
+export function dashboardQueryOf(params: SearchParams): DashboardQuery {
+  const p = dashboardSearchParam;
+  const value = (name: string) => {
+    const raw = params[name];
+    return Array.isArray(raw) ? raw[0] : raw;
+  };
+  const range = oneOf(Object.values(DashboardRange), value(p.range)) ?? defaultDashboardQuery.range;
+  const day = (name: string) => {
+    const raw = value(name);
+    return range === DashboardRange.Custom && isCalendarDay(raw) ? raw : null;
+  };
+  const lines = value(p.lines);
+  const chosen = new Set(lines?.split(","));
+
+  return {
+    range,
+    from: day(p.from),
+    to: day(p.to),
+    step: oneOf(Object.values(ChartStep), value(p.step)) ?? defaultDashboardQuery.step,
+    lines:
+      lines === undefined
+        ? defaultDashboardQuery.lines
+        : chartSeries.filter((series) => chosen.has(series)),
+    includeArchived: value(p.archived) === includeArchivedParam,
+  };
 }
 
 export const sourceRepositoryUrl = "https://github.com/Ivan-Gav/applicator";

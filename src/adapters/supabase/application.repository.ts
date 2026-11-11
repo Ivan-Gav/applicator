@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   Application,
   ApplicationStatus,
+  ApplicationWithHistory,
   AttachedVersion,
   DocumentUse,
   StatusEvent,
@@ -10,6 +11,7 @@ import type { ApplicationRepository, DistinctValueField } from "@/domain/applica
 import type { CreateApplication, UpdateApplication } from "@/domain/application/schema";
 import { mostCommonFirst } from "@/lib/most-common-first";
 import {
+  applicationWithHistoryToDomain,
   attachedVersionToDomain,
   distinctValueColumns,
   documentUsesToDomain,
@@ -57,6 +59,21 @@ export class SupabaseApplicationRepository implements ApplicationRepository {
       throw failure("application list", error);
     }
     return data.map(toDomain);
+  }
+
+  async listWithStatusHistory(userId: string): Promise<ApplicationWithHistory[]> {
+    const { data, error } = await this.client
+      .from("application")
+      .select("*, status_event(status, occurred_at)")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .order("occurred_at", { referencedTable: "status_event", ascending: true })
+      .order("created_at", { referencedTable: "status_event", ascending: true });
+    if (error) {
+      throw failure("application list with history", error);
+    }
+    return data.map(applicationWithHistoryToDomain);
   }
 
   async find(userId: string, id: string): Promise<Application | null> {

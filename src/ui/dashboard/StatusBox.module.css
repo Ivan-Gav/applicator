@@ -1,0 +1,38 @@
+/* A status tag, enlarged: the same colours and clipped corners. */
+
+.box {
+  composes: tag from "../applications/StatusTag.module.css";
+  --corner: 7px;
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px 12px 12px;
+  white-space: normal;
+}
+
+/* The solid diagonals of the tag give way to dashed ones, drawn by .corner. */
+.box[data-status="draft"] {
+  background: var(--tag-bg);
+}
+
+.corner {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  pointer-events: none;
+}
+
+.topLeft {
+  top: 0;
+  left: 0;
+}
+
+.bottomRight {
+  right: 0;
+  bottom: 0;
+}

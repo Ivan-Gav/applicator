@@ -272,3 +272,26 @@ describe("statusHistory", () => {
     await expect(repository.statusHistory(bob, created.id)).resolves.toEqual([]);
   });
 });
+
+describe("listWithStatusHistory", () => {
+  it("lists every application of the user, archived ones too, newest first, each with its history", async () => {
+    const older = await repository.create(alice, input({ companyName: "Older" }));
+    await repository.recordStatusTransition(
+      alice,
+      "draft",
+      statusTransition(older, "applied", friday),
+    );
+    const newer = await repository.create(alice, input({ companyName: "Newer" }));
+    await repository.archive(alice, newer.id, monday);
+    await repository.create(bob, input({ companyName: "Bob's" }));
+
+    const listed = await repository.listWithStatusHistory(alice);
+
+    expect(listed.map(({ application }) => application.companyName)).toEqual(["Newer", "Older"]);
+    expect(listed[0]?.application.archivedAt).toEqual(monday);
+    expect(listed[1]?.history).toEqual([
+      { status: "draft", occurredAt: createdAt },
+      { status: "applied", occurredAt: friday },
+    ]);
+  });
+});

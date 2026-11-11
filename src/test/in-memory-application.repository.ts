@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type {
   Application,
   ApplicationStatus,
+  ApplicationWithHistory,
   AttachedVersion,
   DocumentUse,
   StatusEvent,
@@ -40,6 +41,16 @@ export class InMemoryApplicationRepository implements ApplicationRepository {
 
   listArchived(userId: string): Promise<Application[]> {
     return this.list(userId, (application) => application.archivedAt !== null);
+  }
+
+  async listWithStatusHistory(userId: string): Promise<ApplicationWithHistory[]> {
+    const applications = await this.list(userId, () => true);
+    return Promise.all(
+      applications.map(async (application) => ({
+        application,
+        history: await this.statusHistory(userId, application.id),
+      })),
+    );
   }
 
   find(userId: string, id: string): Promise<Application | null> {

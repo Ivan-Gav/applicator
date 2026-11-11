@@ -4,6 +4,8 @@ import {
   applicationsStateFile,
   applicationsUser,
   authStateFile,
+  dashboardStateFile,
+  dashboardUser,
   documentsStateFile,
   documentsUser,
   sharedUser,
@@ -14,6 +16,7 @@ for (const { user, stateFile } of [
   { user: sharedUser, stateFile: authStateFile },
   { user: applicationsUser, stateFile: applicationsStateFile },
   { user: documentsUser, stateFile: documentsStateFile },
+  { user: dashboardUser, stateFile: dashboardStateFile },
 ]) {
   setup(`sign ${user.email} in`, async ({ page }) => {
     await signInWithMagicLink(page, user.email);
